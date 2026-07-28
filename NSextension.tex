@@ -1,0 +1,27 @@
+\chapter{Neyman-Scott Problems Extension}
+\label{cha:neyman-scott}
+
+The consistency result of Theorem~\ref{thm:fixed-q-theorem} in Chapter~\ref{cha:computational-acceleration} is reassuring but addresses the regime opposite to the one that motivates this thesis. There we fixed the category dimension $Q$ and let the number of groups $J\to\infty$. In that classical settings, the loading matrix $\mathbf{B}$ is estimated consistently. However, the applications of Chapter~\ref{cha:intro} live in the regime $Q\to\infty$ with $J$ fixed. This chapter shows that the two regimes differ not merely quantitatively but qualitatively. In the large-$Q$ regime the estimator of the loading subspace ceases to be consistent, and the mechanism responsible is structural relative of the classical incidental-parameter problem.
+
+\section{Incidental Parameter Problem Transposed}
+\citet{https://www.jstor.org/stable/1914288} exhibited a class of models in which the maximum likelihood estimator is inconsistent. In their canonical example, $y_{jk}\sim \mathcal{N}(\mu_{j},\sigma^{2})$ for $j$ groups and $k$ replicates per group, with $n$ fixed and $J\to\infty$. Each group carries its own nuisance mean $\mu_{j}$, so the number of parameters grows with the sample size. Profiling them out leaves a downward-biased estimator (\cite{Amari2016}) 
+\begin{equation}
+    \hat{\sigma}^2 = \tfrac{n-1}{n}\sigma^2,
+    \label{eq:downward-biased-estimator}
+\end{equation}
+which never converges to the true value. \citet{LANCASTER2000391} traced the many settings in which this pathology recurs. 
+
+Our model inverts this arithmetic. The nuisance parameters are the group random effects  $\{\bm{\lambda}_j\}_{j=1}^{J}$, whose number $J$ is fixed. The structural parameter is the loading matrix $\mathbf{B} \in \mathbb{R}^{Q\times K}$, whose dimension $QK$ diverges as $Q$ goes to infinity. Different from the classical problem with many low-dimensional nuisance parameter corrupting a fixed target, we have a single high-dimensional target supported by a fixed number of replicates. We call this the transposed incidental-parameter problem.
+
+The transposition preserves the essential difficulty. Consistent estimation of $\mathbf{B}$ requires the data information of each loading direction accumulate without bound. That information is supplied by independent realizations of the group effect, of which there are exactly $J$. Enlarging the within-group sample size of each group $I_{j}$ sharpens the posterior of each individual $\bm{\lambda}_{ij}$ but adds no new independent replicate of the latent factor. Enlarging $Q$ adds new coordinates of $\mathbf{B}$ to be estimated rather than new information about the existing ones. Consequently, the effective sample size for the column space of $\mathbf{B}$ is $J$, not $QJ$. When $J$ is fixed and $Q\to\infty$, the information per loading is bounded.
+
+We separate this phenomenon from repairable bias. Conditional likelihood proposed by \citet{10.1093/biomet/74.4.695} and adjust likelihood proposed by \citet{10.1111/j.2517-6161.1990.tb01790.x} try to modify the profile likelihood so that it may be expected to behave more like an honest likelihood. Their corrections succeed because the information lost to the nuisance parameters is recoverable. The loading-direction inconsistency studied here is of a different kind. It reflects an information-theoretic ceiling, but not a correctable distortion. With $J$ fixed, there is only a finite amount of information about the $QK$-dimensional subspace. Our contribution is therefore to quantify the consistency, but not to repair it.
+
+Two consequences of this ceiling organize the reminder of this chapter. The first is a direct analogue of the classical variance bias. The idiosyncratic variance estimator inherits a $\frac{J-K}{J}$ downward bias, which is the factor-analytic counterpart of the $\frac{n-1}{n}$ deflation in the Neyman-Scott normal example and vanishing only as $J\to\infty$. The second is the split in the asymptotic behavior of the estimator across its blocks. The fixed-effect and score directions governed by the $Q$ independent Poisson sub-problems of the Poisson-Multinomial equivalence in section~\ref{sec:PME}
+
+\section{Fisher Information}
+\label{sec:fisher-info}
+
+\begin{lemma}[Loading-subspace Information Upper Bound]
+    Under pervasive assumption $\lambda_{K}(\mathbf{B}^{*\top}\mathbf{B}^{*})\asymp Q$, for any unit direction out-of-subspace, the expected Fisher information $\bar{\mathbf{I}}_{\mathbf{BB}}(\dot{\mathbf{B}})=J\sigma^{-2}+\mathcal{o}(J)$, which is independent to the increase race of $Q$ and $I_{j}$. Therefore, the information of loading row space is bounded and $\|\sin \Theta(\hat{\mathbf{B}},\mathbf{B}^{*})\| \succsim cJ^{-\frac{1}{2}}$ with $J$ fixed and $Q\to\infty$.
+\end{lemma}

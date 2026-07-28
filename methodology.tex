@@ -1,0 +1,189 @@
+\chapter{Methodology}
+\label{cha:methodology}
+
+The observed-data log-likelihood under the model of Chapter~\ref{cha:model-specification} is
+
+\begin{equation}
+    \ell(\bm{\theta})=\sum_{j=1}^{J}\sum_{i\in \mathcal{I}_{j}}\log p(\bm{y}_{ij}\mid \bm{\theta})=\sum_{j=1}^{J}\sum_{i\in \mathcal{I}_{j}}\log \int p(\bm{y}_{ij}\mid \bm{\lambda}_{j})p(\bm{\lambda}_{j}\mid \bm{\Sigma})\,d\bm{\lambda}_{j},
+    \label{eq:log-lik-chap2}
+\end{equation}
+
+where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. The integral in \ref{eq:log-lik-chap2} has no closed form, because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM. The standard approach in generalized linear mixed models is the Laplace approximation (\citet{Breslow_1993}, \citet{Tierney01031986}), which replaced the integral with a Gaussian approximation at the posterior mode.
+
+\section{The Choice of Approximation Level}
+\label{sec:the-choice-of-approximation-level}
+
+A natural approach motivated by the PLN-PCA model (\citet{chiquet2018variational}) approximates the posterior of the K-dimensional factor $p(\mathbf{f}_{j}\mid \bm{y}_{ij})$. Since we assumed $K\ll Q$, this reduces the Newton-step Hessian from $Q\times Q$ to $K\times K$, which appears computationally attractive. However, this approach encounters two fundamental obstacles. 
+
+\paragraph*{Group Collapsing} Within group $j$, observations $\{i\in \mathcal{I}_{j}\}$ share the same factor $\mathbf{f}_{j}$ but carry distinct covariate vectors $\bm{v}_{ij}$ and total count $y_{ij\cdot}$. The factor-space log-posterior requires summing $\sum_{i\in \mathcal{I}_{j}}\log p(\bm{y}_{ij}\mid \mathbf{f}_{j})$, where each term involves its own normalizing constant $\sum_q \exp\bigl(\eta_{ijq}(\mathbf{f}_j)\bigr)$. A naive implementation collapses all observations in group $j$ into a single super-observation with total counts $\bm{y}_{\cdot j} = \sum_{i\in \mathcal{I}_{j}} \bm{y}_{ij}$ and averaged fixed effects $\bar{\bm{\eta}}_{j}$, treating the group as a single Multinomial draw. This is mathematically incorrect. The Multinomial log-normalizer does not linearize under summation, and the approximation error grows with within-group heterogeneity in $\bm{v}_{ij}$. 
+
+\paragraph*{Posterior Second-Moment Deflation} The factor-space Laplace posterior yields a second-moment matrix $\mathbf{W}_{f}=J^{-1}\sum_{j}(\hat{\mathbf{f}}_{j}\hat{\mathbf{f}}_{j}^{\top}+\hat{\mathbf{V}}_{j})$ that systematically underestimates $\mathbf{I}_{K}$ due to Laplace shrinkage. Because the M-step for $\mathbf{B}$ receives only $\mathbf{BW}_{f}\mathbf{B}^{\top}$ as its sufficient statistic for $\bm{\Sigma}$, the Rubin–Thayer algorithm (\citet{Rubin1982}) compensates by inflating $\hat{\mathbf{B}}$, leading to the error in estimation. 
+Thus, instead of approximate the posterior of $K$ dimensional latent factors, we do the approximation on Q dimensional group random effect $p(\bm{\lambda}_{j}\mid \bm{y}_{ij})$ directly and move the factor decomposition from the E-step to the M-step. The E-step treats $\bm{\lambda}_{j}$ as an unknown Q-vector with Gaussian prior $\mathcal{N}(\bm{0},\bm{\Sigma})$, then the M-step decomposes the resulting estimated covariance $\hat{\bm{\Sigma}}_{\text{obs}}$ into $\mathbf{BB}^{\top}+\sigma^{2}\mathbf{I}$.
+
+\iffalse
+
+Before we lay out our detailed EM algorithm, we introduce three technical conditions, which will significantly simplify our presentation. Different from single scalar space, our parameter space $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ given by~\ref{eq:log-lik-chap2} contains both scalar, vector and matrix.
+
+\begin{condition}[Self-Consistency]
+Function $Q(\cdot\mid \bm{\theta^{*}})$ is self-consistency, namely
+\begin{equation}
+    \bm{\theta^{*}}=\arg\max_{\bm{\theta}\in \Omega} Q(\bm{\theta}\mid \bm{\theta^{*}})
+    \label{eq:self-consistency}
+\end{equation}
+\end{condition}
+
+\begin{condition}[Strong Concavity and Smoothness]
+$Q(\cdot\mid \bm{\theta^{*}})$ is strongly concave over $\Omega$, that is,
+\begin{equation}
+    Q(\bm{\theta}_{2}\mid \bm{\theta^{*}})-Q(\bm{\theta}_{1}\mid \bm{\theta^{*}})-\langle \nabla Q(\bm{\theta}_{1}\mid \bm{\theta^{*}}), \bm{\theta}_{2}-\bm{\theta}_{1}\rangle\leq -\frac{\gamma}{2}\|\bm{\theta}_{2}-\bm{\theta}_{1}\|^{2}, \quad \forall \bm{\theta}_{1},\bm{\theta}_{2}\in \Omega.
+    \label{eq:strong-concave}
+\end{equation}
+$Q(\cdot\mid \bm{\theta^{*}})$ is $\mu$-smooth over $\Omega$, that is, for any $\bm{\theta}$ near $\bm{\theta}^{*}$,
+\begin{equation}
+    Q(\bm{\theta}_{2}\mid \bm{\theta^{*}})-Q(\bm{\theta}_{1}\mid \bm{\theta^{*}})-\langle \nabla Q(\bm{\theta}_{1}\mid \bm{\theta^{*}}), \bm{\theta}_{2}-\bm{\theta}_{1}\rangle\geq -\frac{\mu}{2}\|\bm{\theta}_{2}-\bm{\theta}_{1}\|^{2}, \quad \forall \bm{\theta}_{1},\bm{\theta}_{2}\in \Omega.
+    \label{eq:smooth}
+\end{equation}
+\end{condition}
+
+\begin{condition}[Gradient Stability]
+    \begin{equation}
+        \| \nabla Q(\mathcal{M}(\bm{\theta})\mid \bm{\theta})-\nabla Q(\mathcal{M}(\bm{\theta})\mid \bm{\theta}^{*})\|\leq \tau \|\bm{\theta}-\bm{\theta}^{*}\|
+    \end{equation}
+\end{condition}
+
+\fi
+
+\section{E-Step: Laplace Approximation}
+\label{sec: E-step}
+    For each group $j$, the log-posterior of $\bm{\lambda}_{j}$ is given by:
+\begin{equation}
+    \mathcal{L}(\bm{\lambda}_{j})=\sum_{i\in \mathcal{I}_{j}}\Bigl[\sum_{q}y_{ijq}\eta_{ijq}(\bm{\lambda}_{j})-y_{ij\cdot}\log \sum_{q}\exp\bigl(\eta_{ijq}(\bm{\lambda}_{j})\bigr)\Bigr]-\frac{1}{2}\bm{\lambda}_{j}^{\top}\bm{\Sigma}^{-1}\bm{\lambda}_{j},
+    \label{eq: estep-loglik}
+\end{equation}
+up to an additive constant independent of $\bm{\lambda}_{j}$, where 
+\begin{equation}
+    \eta_{ijq}(\bm{\lambda}_{j})=\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q}+\lambda_{jq},
+    \label{eq: individualcovariate}
+\end{equation}
+is evaluated separately for each $i\in \mathcal{I}_{j}$, gives the individual-specific covariate structure.
+The gradient and Hessian of \ref{eq: estep-loglik} are
+
+\begin{equation}
+    \nabla_{\bm{\lambda}_{j}}\ell=\sum_{i\in \mathcal{I}_{j}}\bigl(\bm{y}_{ij}-y_{ij\cdot}\bm{p}_{ij}(\bm{\lambda}_{j})\bigr)-\bm{\Sigma}^{-1}\bm{\lambda}_{j},
+\end{equation}
+
+\begin{equation}
+    \mathbf{H}(\bm{\lambda}_{j})=-\sum_{i\in\mathcal{I}_{j}}y_{ij\cdot}\mathbf{P}_{ij}(\bm{\lambda}_{j})-\bm{\Sigma}^{-1},
+        \label{eq: hessian-equality}
+\end{equation}
+where $\bm{p}_{ij}(\bm{\lambda}_{j})=\operatorname{softmax}\bigl(\bm{\eta}_{ij}(\bm{\lambda}_{j})\bigr)$ and $\mathbf{P}_{ij}=\text{diag}(\bm{p}_{ij})-\bm{p}_{ij}\bm{p}_{ij}^{\top}$. Since $\mathbf{P}_{ij}\succeq 0$ and $\bm{\Sigma}^{-1}\succ 0$, we have $\mathbf{H}(\bm{\lambda}_{j})\prec 0$ everywhere, so $\ell(\bm{\lambda}_{j})$ is strictly concave and has a unique maximizer
+
+\begin{equation}
+     \hat{\bm{\lambda}}_{j}
+     = \arg\max_{\bm{\lambda}\in \mathbb{R}^{Q}}
+     \ell_{j}(\bm{\lambda}_{j}).
+     \label{eq:maximizer}
+\end{equation}
+
+Newton's method
+
+\begin{equation}
+    \bm{\lambda}_{j}^{(t+1)}=
+    \bm{\lambda}_{j}^{(t)}
+    -s^{(t)}\mathbf{H}\bigl(\bm{\lambda}_{j}^{(t)}
+    \bigr)^{-1}\nabla_{\bm{\lambda}_{j}}
+    \ell \bigl(\bm{\lambda}_{j}^{(t)}\bigr),
+    \label{eq:newton-method}
+\end{equation}
+with backtracking step size $s^{(t)}$ converges to the unique global maximum $\hat{\bm{\lambda}}_{j}$ from any initialization. The Laplace approximation then yields
+
+\begin{equation}
+    p(\bm{\lambda}_{j}\mid \bm{y}_{ij}) \approx \mathcal{N}\bigl(\hat{\bm{\lambda}}_{j}, \hat{\mathbf{S}}_{j}\bigr), \quad \hat{\mathbf{S}}_{j}=\bigl(-\mathbf{H}(\hat{\bm{\lambda}_{j}})\bigr)^{-1}.
+    \label{eq:surrogate-eq}
+\end{equation}
+
+\section{M-Step (a): Fixed Effects via Poisson GLMs}
+\label{sec:M-step(a)}
+
+    With $\hat{\bm{\lambda}}_{j}$ fixed, recompute the Poisson-Multinomial Equivalence offset:
+\begin{equation}
+    \xi_{ij}=\log y_{ij\cdot}-\log \sum_{q}\exp\bigl(\hat{\mu}_{q}+\bm{v}_{ij}^{\top}\hat{\bm{\phi}}_{q}+\hat{\lambda}_{jq}\bigr).
+\end{equation}
+For $q=1,2,\dots,Q$, we solve the maximization problem independently:
+\begin{equation}
+    (\hat{\mu}_{q}, \hat{\bm{\phi}}_{q})=\arg \max_{\mu_{q}, \bm{\phi}_{q}}\sum_{i}\bigl[y_{ijq}(\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q})-\exp (\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q}+\hat{\lambda}_{jq}+\xi_{ij})\bigr].
+\end{equation}
+This is a Poisson log-linear regression with offset $\lambda_{jq}+\xi_{ij}$, solved by iteratively reweighted least squares. The Q problems are independent and may be parallelized. 
+
+\section{M-Step (b): Factor Loadings and Idiosyncratic Variance}
+\label{sec:M-step(b)}
+
+The EM sufficient statistic for $\bm{\Sigma}$ follows directly from the Laplace output:
+
+\begin{equation}
+    \hat{\bm{\Sigma}}_{\text{obs}}=\frac{1}{J}\sum_{j}\mathbb{E}[\bm{\lambda}_{j} \bm{\lambda}_{j}^{\top}\mid \bm{y}_{ij}]\approx \frac{1}{J}\sum_{j}(\hat{\bm{\lambda}}_{j} \hat{\bm{\lambda}}_{j}^{\top}+\hat{\mathbf{S}}_{j}).
+    \label{eq:sigma-obs}
+\end{equation}
+
+Critically, $\hat{\bm{\Sigma}}_{\text{obs}}$ is fully determined by current Laplace output $(\hat{\bm{\lambda}}_{j}, \hat{\mathbf{S}}_{j})$ and does not need to be re-evaluated during the Rubin-Thayer sub-iterations, thus eliminating the circular dependency inherent in factor-space formulations.
+Given $\hat{\bm{\Sigma}}_{\text{obs}}$, we decompose $\bm{\Sigma}=\mathbf{BB}^{\top}+\sigma^2\mathbf{I}_{Q}$ via the Rubin-Thayer EM factor analysis algorithm (\citet{Rubin1982})
+
+\begin{equation}
+\hat{\boldsymbol{\beta}}
+=
+\hat{\mathbf{B}}^\top
+\left(
+\hat{\mathbf{B}}\hat{\mathbf{B}}^\top
++
+\hat{\sigma}^2 \mathbf{I}_Q
+\right)^{-1},
+\label{eq: Rubin1}
+\end{equation}
+\begin{equation}
+\hat{\boldsymbol{\Theta}}
+=
+\mathbf{I}_{K}
+-
+\hat{\boldsymbol{\beta}}\hat{\mathbf{B}}
++
+\hat{\boldsymbol{\beta}}
+\hat{\boldsymbol{\Sigma}}_{\mathrm{obs}}
+\hat{\boldsymbol{\beta}}^\top,
+\label{eq: Rubin2}
+\end{equation}
+\begin{equation}
+\hat{\mathbf{B}}_{\mathrm{new}}
+=
+\hat{\boldsymbol{\Sigma}}_{\mathrm{obs}}
+\hat{\boldsymbol{\beta}}^\top
+\hat{\boldsymbol{\Theta}}^{-1},
+\label{eq: Rubin3}
+\end{equation}
+\begin{equation}
+\hat{\sigma}_{\mathrm{new}}^{2}
+=
+\frac{1}{Q}
+\operatorname{tr}
+\left(
+\hat{\boldsymbol{\Sigma}}_{\mathrm{obs}}
+-
+\hat{\mathbf{B}}_{\mathrm{new}}
+\hat{\boldsymbol{\beta}}
+\hat{\boldsymbol{\Sigma}}_{\mathrm{obs}}
+\right).
+\label{eq: Rubin4}
+\end{equation}
+
+The iterations  \ref{eq: Rubin1}-\ref{eq: Rubin4} are repeated to convergence. The PLT constraint \ref{eq: PLT} is enforced post-hoc via a QR decomposition of the top K rows of $\hat{\mathbf{B}}_{\text{new}}$, followed by sign correction to ensure positive diagonal entries and zeroing of the upper triangle. Applying PLT only after the Rubin–Thayer sub-iterations converge, rather than at each inner step, avoids the discontinuities that would otherwise disrupt convergence.
+    Given $\hat{\mathbf{B}}$ and $\hat{\sigma}^2$, the factor scores are recovered by the Bayes linear estimator (\citet{Gelman2013}):
+\begin{equation}
+\hat{\mathbf{f}}_j = \left( \mathbf{I}_K + \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\mathbf{B}} \right)^{-1} \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\boldsymbol{\lambda}}_j ,
+\label{eq: Bayeslinearestimator}
+\end{equation}
+requiring only $K\times K$ inversion via Woodbury equality.
+
+\section{Convergence}
+\label{sec:convergence}
+
+
+
