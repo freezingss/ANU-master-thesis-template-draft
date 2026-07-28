@@ -278,33 +278,67 @@ after the elementary pre-processing already standard in this setting.
 \section{Curvature Problem \& Hybrid Algorithm}
 \label{sec:curvature-problem-hybrid-algorithm}
 
-Theorem~\ref{thm:convergence} guarantees that the Woodbury-accelerated iteration converges to the correct mode $\hat{\bm{\lambda}}$. It says noting, however, about the curvature at that mode, and the curvature is what the Laplace approximation~\ref{eq:surrogate-eq} actually needs
+The posterior mode $\hat{\bm{\lambda}}_{j}$ of the true multinomial log-posterior $\ell$ in E-step for each group $j$. Theorem~\ref{thm:convergence} ganrantees that the Woodbury-accelerated iteration reaches it. However, the Laplace approximation needs the curvature at that mode, and here the two Hessians that the algorithms manipulates part ways. We make the distinction precise, because it is both the source of Woodbury of the speed-up and the source of a small, quantifiable bias.
 
+Recall the linear predictor~\ref{eq:linear-predictor} and the probability $\bm{p}_{ij}=\text{softmax}(\bm{\eta}_{ij})\in\mathbb{R}^{Q}$ for categories. The group effect enters each category additively, where $\dfrac{\partial\eta_{ijq}}{\partial \lambda_{jr}}=\delta_{qr}$, so the score of the true multinomial log-posterior is given by,
 \begin{equation}
-    \hat{\mathbf{S}}_{j}=\bigl(-\mathbf{H}_{j}(\hat{\bm{\lambda}}_{j})\bigr)^{-1},
+    \nabla\ell(\bm{\lambda}_{j})=\sum_{i\in\mathcal{I}_{j}}(\bm{y}_{ij}-y_{ij\cdot}\bm{p}_{ij})-\bm{\Sigma}^{-1}\bm{\lambda}_{j},
+    \label{eq:true-multi-log-post}
 \end{equation}
-with $\mathbf{H}_{j}$ the Hessian of the true multinomial log-posterior $\ell$, not of the Poisson surrogate $\ell_{P}$. The two Hessians are related by
+and the Hessian matrix is given by,
+\begin{equation}
+    -\mathbf{H}_{j}(\bm{\lambda}_{j})=\sum_{i\in\mathcal{I}_{j}}y_{ij\cdot}\left(\text{diag}(\bm{p}_{ij})-\bm{p}_{ij}\bm{p}_{ij}^{\top}\right)+\bm{\Sigma}^{-1}.
+    \label{eq:multi-hessian}
+\end{equation}
+The prior precision $\bm{\Sigma}^{-1}=\left(\mathbf{BB}^{\top}+\sigma^{2}\mathbf{I}_{Q}\right)^{-1}=\sigma^{-2}\mathbf{I}_{Q}-\sigma^{-4}\mathbf{BM}_{K}^{-1}\mathbf{B}^{\top}$ is diagonal-plus-low-rank-K by the Woodbury identity with $\mathbf{M}_{K}$ defined in~\ref{eq:woodbury2}. However, the likelihood of~\ref{eq:multi-hessian} carries the $I_{j}$ outer products $-y_{ij\cdot}\bm{p}_{ij}\bm{p}_{ij}^{\top}$. It couples all categories together and makes $-\mathbf{H}_{j}$ be a dense $Q\times Q$ matrix. The computational cost $\mathcal{O}(Q^{3})$ prevents the direct Newton solve.
 
+That’s why we introduce the Poisson-Multinomial equivalence at the beginning in Chapter~\ref{cha:model-specification}. The Poisson-Multinomial equivalence represents each count as an independent Poisson variate $y_{ijq}\sim \operatorname{Poisson}\left(\exp (\eta_{ijq}+\xi_{ij})\right)$ with offset $\xi_{ij}=\log y_{ij\cdot}-\log \sum_{q}\exp(\eta_{ijq})$ re-profiled at the current $\bm{\lambda}_{j}$ so that $\exp(\eta_{ijq}+\xi_{ij})=y_{ij\cdot}p_{ijq}$. The surrogate objective $\ell_{P}$ is the Poisson log-posterior with $\xi_{ij}$ held fixed at this profiled value. The score of the surrogate Poisson is,
 \begin{equation}
-    -\mathbf{H}_{j}(\bm{\lambda})=-\mathbf{H}_{P}(\bm{\lambda})-\sum_{i\in \mathcal{I}_{j}}y_{ij\cdot} \bm{p}_{ij}\bm{p}_{ij}^{\top}.
+    \nabla\ell_{P}(\bm{\lambda}_{j})=\sum_{i\in\mathcal{I}_{j}}\bigl(\bm{y}_{ij}-\exp (\eta_{ijq}+\xi_{ij})\bigr)-\bm{\Sigma}^{-1}\bm{\lambda}_{j}=\sum_{i\in\mathcal{I}_{j}}(\bm{y}_{ij}-y_{ij\cdot}\bm{p}_{ij})-\bm{\Sigma}^{-1}\bm{\lambda}_{j},
+    \label{eq:poi-log-post}
 \end{equation}
-which follows from expanding $\mathbf{P}_{ij}=\text{diag}(\bm{p}_{ij})-\bm{p}_{ij}\bm{p}_{ij}^{\top}$ in~\ref{eq: hessian-equality} and comparing with~\ref{eq:acceleration-hessian1}. The rank at most $I_{j}$ correction term is positive semi-definite. Consequently
+coincides with the true multinomial score in~\ref{eq:true-multi-log-post}. The surrogate and the target share the same stationary point, which is why the line search recovers the exact multinomial model. The Hessians differ. Holding $\xi_{ij}$ fixed makes each Poisson coordinate a function of its own $\lambda_{jq}$ alone, so the cross-category second derivatives vanish and,
 \begin{equation}
-    -\mathbf{H}_{P}(\bm{\lambda})\succeq -\mathbf{H}_{j}(\bm{\lambda})\succ 0,
+    -\mathbf{H}_{P}(\bm{\lambda}_{j})=\text{diag}\left(\sum_{i\in\mathcal{I}_{j}}y_{ij\cdot}\bm{p}_{ij}\right)+\bm{\Sigma}^{-1}=\tilde{\mathbf{D}}-\sigma^{-4}\mathbf{BM}_{K}^{-1}\mathbf{B}^{\top},
+    \label{eq:poi-hessian}
 \end{equation}
+where $\tilde{d}_{q}=\sum_{i\in\mathcal{I}_{j}}y_{ij\cdot}p_{ijq}+\sigma^{-2}$. Therefore, the surrogate negative Hessian is diagonal-plius-rank-K, which is the structure solved by Woodbury equality and gives the Newton direction $\left(-\mathbf{H}_{P}\right)^{-1}\nabla\ell$ and the log-determinant $\log |-\mathbf{H}_{P}|$ with cost $\mathcal{O}(QK^{2}+K^{3})$ instead of $\mathcal{O}(Q^{3})$.
+
+\begin{proposition}
+    For every $\bm{\lambda}_{j}$,
+    \begin{equation}
+        -\mathbf{H}_{j}(\bm{\lambda})=-\mathbf{H}_{P}(\bm{\lambda})-\sum_{i\in \mathcal{I}_{j}}y_{ij\cdot} \bm{p}_{ij}\bm{p}_{ij}^{\top}.
+        \label{eq:diff-hessian}
+    \end{equation}
+    The correction is positive semi-definite of rank at most $I_{j}=|\mathcal{I}_{j}|$, consequently $-\mathbf{H}_{P}(\bm{\lambda})\succeq -\mathbf{H}_{j}(\bm{\lambda})\succ 0$.
+\end{proposition}
+
+\begin{proof}
+    Subtract \ref{eq:poi-hessian} from \ref{eq:multi-hessian}, the diagonal terms $\text{diag}\left(\sum_{i}y_{ij\cdot}\bm{p}_{ij}\right)$ and the prior precision $\bm{\Sigma}^{-1}$ cancel, leaving the equality \ref{eq:diff-hessian}. Each summand $y_{ij\cdot}\bm{p}_{ij}\bm{p}_{ij}^{\top}$ is a non-negative scalar times an outer product, hence positive semi-definite of rank one. Their sum has rank at most $I_{j}$. Positive semi-definiteness of the correction gives $-\mathbf{H}_{P}\succeq -\mathbf{H}_{j}$, and $-\mathbf{H}_{j}\succ 0$ because it is the negative Hessian of the strictly concave $\ell$. 
+\end{proof}
+
 so that 
 \begin{equation}
     \hat{\mathbf{S}}_{j}^{P}:=\bigl(-\mathbf{H}_{P}(\hat{\bm{\lambda}_{j}})\bigr)_{-1}\preceq \hat{\mathbf{S}}_{j}, 
 \end{equation}
 in the positive semi-definite order. The Poisson surrogate systematically understates posterior uncertainty. Substituting $\hat{\mathbf{S}}_{j}^{P}$ for $\hat{\mathbf{S}}_{j}$ in~\ref{eq:sigma-obs} would therefore introduce a systematic downward bias into $\hat{\sigma}^{2}$ and into $\mathcal{L}^{(t)}$.
 
-The resolution is the hubrid strategy that gives the name of this section. The cheap Woodbury-accelerated surrogate Newton iteration is used to find the model $\hat{\bm{\lambda}}_{j}$ and evaluate the true multinomial Hessian once to obtain $\hat{\mathbf{S}}_{j}$ at that mode.
+The resolution is the hybrid strategy that gives the name of this section. The cheap Woodbury-accelerated surrogate Newton iteration is used to find the model $\hat{\bm{\lambda}}_{j}$ and evaluate the true multinomial Hessian once to obtain $\hat{\mathbf{S}}_{j}$ at that mode.
 
+Theorem~\ref{thm:convergence} guarantees that the Woodbury-accelerated iteration converges to the correct mode $\hat{\bm{\lambda}}$. It says noting, however, about the curvature at that mode, and the curvature is what the Laplace approximation~\ref{eq:surrogate-eq} actually needs
+
+\begin{equation}
+    \hat{\mathbf{S}}_{j}=\bigl(-\mathbf{H}_{j}(\hat{\bm{\lambda}}_{j})\bigr)^{-1},
+\end{equation}
+with $\mathbf{H}_{j}$ the Hessian of the true multinomial log-posterior $\ell$, not of the Poisson surrogate $\ell_{P}$. 
+
+\iffalse
 \section{Complexity Analysis}
 \label{sec:complexity-analysis}
 
 \section{Woodbury-Accelerated Factor-Analysis M-step}
 \label{sec:woodbury-accelerated-factor-analysis}
+\fi
 
 \section{Fixed-Q Consistency}
 \label{sec:fixed-q-consistency}

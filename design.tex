@@ -1,7 +1,7 @@
 \chapter{Model Setup \& Identifiability Conditions}
 \label{cha:model-specification}
 
-Given the notation of our thesis in section~\ref{sec:notation}, we begin with basic background of the Poisson-Multinomial Equivalence in section~\ref{sec:PME} and EM (Expectation-Maximization) algorithm in section~\ref{sec: em-algorithm-relatives}, which are the core tricks of our algorithms in Chapter~\ref{cha:methodology} and Chapter~\ref{cha:computational-acceleration}. . Our notation and model structure are provided in section~\ref{sec:two-level-hierarchy}. In section~\ref{sec:identifiability}, we give the identifiable condition for loading matrix so that the it can be recovered uniquely.
+Given the notation of our thesis in section~\ref{sec:notation}, we begin with basic background of the Poisson-Multinomial Equivalence in section~\ref{sec:PME} and EM (Expectation-Maximization) algorithm in section~\ref{sec: em-algorithm-relatives}, which are the core tricks of our algorithms in Chapter~\ref{cha:methodology} and Chapter~\ref{cha:computational-acceleration}. Our notation and model structure are provided in section~\ref{sec:two-level-hierarchy}. In section~\ref{sec:identifiability}, we give the identifiable condition for loading matrix so that the it can be recovered uniquely.
 
 \section{Model Setup}
 \label{sec:model-setup}
@@ -26,7 +26,11 @@ The present chapter carries this perspective one step further into the E-step. I
 \section{EM Algorithm \& Relatives}
 \label{sec: em-algorithm-relatives}
 
-In this section, we briefly review the classical EM algorithm. Let $Y$ and $Z$ be random variables taking values in the sample spaces $\mathcal{Y}$ and $\mathcal{Z}$, respectively. Suppose that the pair $(Y,Z)$ has a joint density function $f_{\theta^{*}}$ that belongs to some parameterized family $\{f_{\theta}\mid \theta\in \Omega
+In order to have a good understanding for further discussion, we briefly review the classical EM algorithm in this section. Then we discuss the models that have the similar structure with our model. 
+
+\subsection{The Classical EM Algorithm}
+\label{subsec:classical-em}
+Let $Y$ and $Z$ be random variables taking values in the sample spaces $\mathcal{Y}$ and $\mathcal{Z}$, respectively. Suppose that the pair $(Y,Z)$ has a joint density function $f_{\theta^{*}}$ that belongs to some parameterized family $\{f_{\theta}\mid \theta\in \Omega
 \}$, for a non-empty compact convex set $\Omega$. Rather than observing complete data $(Y,Z)$, we observe only component $Y$.Thus, the component $Z$ corresponds to the missing or latent structure in the data. Our goal is to obtain an estimate of the unknown parameter $\theta^{*}$ via maximum likelihood to compute some $\hat{\theta}\in\Omega$ maximizing the function $\theta\mapsto g_{\theta}(y)$, where
 
 \begin{equation}
@@ -46,6 +50,10 @@ the equality holds when $\theta=\theta^{'}$. Thus, we have a family of lower bou
     \label{eq:em-m-step}
 \end{equation}
 and then reevaluates the lower bound at the new parameter value in E-step.
+
+\subsection{Relative Works}
+\label{subsec:relative-works}
+
 
 \section{Two-Level Hierarchy}
 \label{sec:two-level-hierarchy}
