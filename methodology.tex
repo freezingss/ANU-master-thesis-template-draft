@@ -8,12 +8,12 @@ The observed-data log-likelihood under the model of Chapter~\ref{cha:model-speci
     \label{eq:log-lik-chap2}
 \end{equation}
 
-where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. The integral in \ref{eq:log-lik-chap2} has no closed form, because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM. The standard approach in generalized linear mixed models is the Laplace approximation (\citet{Breslow_1993}, \citet{Tierney01031986}), which replaced the integral with a Gaussian approximation at the posterior mode.
+where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. The integral in \eqref{eq:log-lik-chap2} has no closed form, because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM. The standard approach in generalized linear mixed models is the Laplace approximation (\citep{Breslow_1993}, \citep{Tierney01031986}), which replaced the integral with a Gaussian approximation at the posterior mode.
 
 \section{The Choice of Approximation Level}
 \label{sec:the-choice-of-approximation-level}
 
-A natural approach motivated by the PLN-PCA model (\citet{chiquet2018variational}) approximates the posterior of the K-dimensional factor $p(\mathbf{f}_{j}\mid \bm{y}_{ij})$. Since we assumed $K\ll Q$, this reduces the Newton-step Hessian from $Q\times Q$ to $K\times K$, which appears computationally attractive. However, this approach encounters two fundamental obstacles. 
+A natural approach motivated by \citet{chiquet2018variational} and their PLN-PCA model approximates the posterior of the K-dimensional factor $p(\mathbf{f}_{j}\mid \bm{y}_{ij})$. Since we assumed $K\ll Q$, this reduces the Newton-step Hessian from $Q\times Q$ to $K\times K$, which appears computationally attractive. However, this approach encounters two fundamental obstacles. 
 
 \paragraph*{Group Collapsing} Within group $j$, observations $\{i\in \mathcal{I}_{j}\}$ share the same factor $\mathbf{f}_{j}$ but carry distinct covariate vectors $\bm{v}_{ij}$ and total count $y_{ij\cdot}$. The factor-space log-posterior requires summing $\sum_{i\in \mathcal{I}_{j}}\log p(\bm{y}_{ij}\mid \mathbf{f}_{j})$, where each term involves its own normalizing constant $\sum_q \exp\bigl(\eta_{ijq}(\mathbf{f}_j)\bigr)$. A naive implementation collapses all observations in group $j$ into a single super-observation with total counts $\bm{y}_{\cdot j} = \sum_{i\in \mathcal{I}_{j}} \bm{y}_{ij}$ and averaged fixed effects $\bar{\bm{\eta}}_{j}$, treating the group as a single Multinomial draw. This is mathematically incorrect. The Multinomial log-normalizer does not linearize under summation, and the approximation error grows with within-group heterogeneity in $\bm{v}_{ij}$. 
 
@@ -22,7 +22,7 @@ Thus, instead of approximate the posterior of $K$ dimensional latent factors, we
 
 \iffalse
 
-Before we lay out our detailed EM algorithm, we introduce three technical conditions, which will significantly simplify our presentation. Different from single scalar space, our parameter space $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ given by~\ref{eq:log-lik-chap2} contains both scalar, vector and matrix.
+Before we lay out our detailed EM algorithm, we introduce three technical conditions, which will significantly simplify our presentation. Different from single scalar space, our parameter space $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ given by~\eqref{eq:log-lik-chap2} contains both scalar, vector and matrix.
 
 \begin{condition}[Self-Consistency]
 Function $Q(\cdot\mid \bm{\theta^{*}})$ is self-consistency, namely
@@ -66,26 +66,26 @@ up to an additive constant independent of $\bm{\lambda}_{j}$, where
     \label{eq: individualcovariate}
 \end{equation}
 is evaluated separately for each $i\in \mathcal{I}_{j}$, gives the individual-specific covariate structure.
-The gradient and Hessian of \ref{eq: estep-loglik} are
+The gradient and Hessian of \eqref{eq: estep-loglik} are
 
 \begin{equation}
     \nabla_{\bm{\lambda}_{j}}\ell=\sum_{i\in \mathcal{I}_{j}}\bigl(\bm{y}_{ij}-y_{ij\cdot}\bm{p}_{ij}(\bm{\lambda}_{j})\bigr)-\bm{\Sigma}^{-1}\bm{\lambda}_{j},
 \end{equation}
 
 \begin{equation}
-    \mathbf{H}(\bm{\lambda}_{j})=-\sum_{i\in\mathcal{I}_{j}}y_{ij\cdot}\mathbf{P}_{ij}(\bm{\lambda}_{j})-\bm{\Sigma}^{-1},
-        \label{eq: hessian-equality}
+    \mathbf{H}(\bm{\lambda}_{j})=-\sum_{i\in\mathcal{I}_{j}}y_{ij\cdot}\left(\text{diag}(\bm{p}_{ij})-\bm{p}_{ij}\bm{p}_{ij}^{\top}\right)-\bm{\Sigma}^{-1},
+    \label{eq: hessian-equality}
 \end{equation}
-where $\bm{p}_{ij}(\bm{\lambda}_{j})=\operatorname{softmax}\bigl(\bm{\eta}_{ij}(\bm{\lambda}_{j})\bigr)$ and $\mathbf{P}_{ij}=\text{diag}(\bm{p}_{ij})-\bm{p}_{ij}\bm{p}_{ij}^{\top}$. Since $\mathbf{P}_{ij}\succeq 0$ and $\bm{\Sigma}^{-1}\succ 0$, we have $\mathbf{H}(\bm{\lambda}_{j})\prec 0$ everywhere, so $\ell(\bm{\lambda}_{j})$ is strictly concave and has a unique maximizer
+where $\bm{p}_{ij}(\bm{\lambda}_{j})=\operatorname{softmax}\bigl(\bm{\eta}_{ij}(\bm{\lambda}_{j})\bigr)$. Since $\mathbf{P}_{ij}\succeq 0$ and $\bm{\Sigma}^{-1}\succ 0$, we have $\mathbf{H}(\bm{\lambda}_{j})\prec 0$ everywhere, so $\ell(\bm{\lambda}_{j})$ is strictly concave and has a unique maximizer
 
 \begin{equation}
      \hat{\bm{\lambda}}_{j}
      = \arg\max_{\bm{\lambda}\in \mathbb{R}^{Q}}
-     \ell_{j}(\bm{\lambda}_{j}).
+     \ell_{j}(\bm{\lambda}_{j}),
      \label{eq:maximizer}
 \end{equation}
 
-Newton's method
+which can be found by Newton's method with Armijo backtracking search with step size $s^{(t)}\in (0,1]$. Strict concavity guarantees convergence to $\hat{\bm{\lambda}}_{j}$ from any starting point. The Laplace approximation then replaces the intractable posterior with the Gaussian matched to the model and curvature at,
 
 \begin{equation}
     \bm{\lambda}_{j}^{(t+1)}=
@@ -101,6 +101,8 @@ with backtracking step size $s^{(t)}$ converges to the unique global maximum $\h
     p(\bm{\lambda}_{j}\mid \bm{y}_{ij}) \approx \mathcal{N}\bigl(\hat{\bm{\lambda}}_{j}, \hat{\mathbf{S}}_{j}\bigr), \quad \hat{\mathbf{S}}_{j}=\bigl(-\mathbf{H}(\hat{\bm{\lambda}_{j}})\bigr)^{-1}.
     \label{eq:surrogate-eq}
 \end{equation}
+
+Each Newton step requires forming and solving the $Q\times Q$ system in \eqref{eq: hessian-equality} at a cost of $\mathcal{O}(I_{j}Q^{2}+Q^{3})$ per step. We will discuss and remove this bottleneck in Chapter~\ref{cha:computational-acceleration}.
 
 \section{M-Step (a): Fixed Effects via Poisson GLMs}
 \label{sec:M-step(a)}
@@ -174,16 +176,17 @@ Given $\hat{\bm{\Sigma}}_{\text{obs}}$, we decompose $\bm{\Sigma}=\mathbf{BB}^{\
 \label{eq: Rubin4}
 \end{equation}
 
-The iterations  \ref{eq: Rubin1}-\ref{eq: Rubin4} are repeated to convergence. The PLT constraint \ref{eq: PLT} is enforced post-hoc via a QR decomposition of the top K rows of $\hat{\mathbf{B}}_{\text{new}}$, followed by sign correction to ensure positive diagonal entries and zeroing of the upper triangle. Applying PLT only after the Rubin–Thayer sub-iterations converge, rather than at each inner step, avoids the discontinuities that would otherwise disrupt convergence.
-    Given $\hat{\mathbf{B}}$ and $\hat{\sigma}^2$, the factor scores are recovered by the Bayes linear estimator (\citet{Gelman2013}):
+The iterations  \eqref{eq: Rubin1}-\eqref{eq: Rubin4} are repeated to convergence. The PLT constraint \eqref{eq: PLT} is enforced post-hoc via a QR decomposition of the top K rows of $\hat{\mathbf{B}}_{\text{new}}$, followed by sign correction to ensure positive diagonal entries and zeroing of the upper triangle. Applying PLT only after the Rubin–Thayer sub-iterations converge, rather than at each inner step, avoids the discontinuities that would otherwise disrupt convergence.
+    Given $\hat{\mathbf{B}}$ and $\hat{\sigma}^2$, the factor scores are recovered by the Bayes linear estimator \citep{Gelman2013}:
 \begin{equation}
 \hat{\mathbf{f}}_j = \left( \mathbf{I}_K + \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\mathbf{B}} \right)^{-1} \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\boldsymbol{\lambda}}_j ,
 \label{eq: Bayeslinearestimator}
 \end{equation}
-requiring only $K\times K$ inversion via Woodbury equality.
+requiring only $K\times K$ inversion.
 
+\iffalse
 \section{Convergence}
 \label{sec:convergence}
-
+\fi
 
 
