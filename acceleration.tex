@@ -384,6 +384,34 @@ $Q$ & $\bm\Sigma^{-1}v$ error & mode corr. & mode max.\ diff. & $\log|\widehat{\
 \end{tabular}
 \end{table}
 
+\subsection{Numerical Gap of $\mathbf{S}$  and $\mathbf{S}^{P}$}
+\label{sec:equivalence}
+
+The equivalence of Table~\ref{tab:Shat-compare} established that the two implementations agree on the posterior model. However, the mode is affected both by the output of E-step and Laplace curvature $\hat{\mathbf{S}}_{j}$. We have found in Proposition~\ref{prop:diff-s} and \eqref{eq:covariance-relation} that Poisson surrogate $\hat{\mathbf{S}}^{P}_{j}$ over-states the curvature and hence under-states the variance, which has been shown by the estimation of $\sigma^{2}$ in Table~\ref{tab:Shat-compare}. 
+
+\begin{table}[H]
+\centering
+\caption{Full-EM comparison of the dense reference against the Woodbury fitter with the
+exact and surrogate posterior curvatures ($Q=30$, $K=2$, $J=20$, $I_j=12$, $\sigma^2_{\text{true}}=0.30$).
+The mode-based quantities are shared. The two Woodbury variants differ only in
+$\hat{\mathbf{S}}_j$.}
+\label{tab:Shat-compare}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Quantity & Dense + $\mathbf S$ & Woodbury + $\mathbf S$ & Woodbury + $\mathbf S^{P}$ \\
+\midrule
+Final Laplace log-ev      & $-103349.10$ & $-103349.08$ & $-103379.49$ \\
+$\hat{\sigma}^2$            & $0.2556$     & $0.2557$     & $0.2447$ \\
+$d(\hat{\mathbf B},\mathbf B_{\text{true}})$ & $0.5019$ & $0.4956$ & $0.4743$ \\
+$\lambda$ mode correlation      & $0.9514$     & $0.9515$     & $0.9515$ \\
+log-ev non-decreasing     & Yes          & Yes          & Yes \\
+\midrule
+$|\log\text{-ev} - \text{dense}|$ & --- & $0.017$ & $30.39$ \\
+$|\widehat\sigma^2 - \text{dense}|$ & --- & $0.0001$ & $0.0109$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Acceleration Efficiency}
 \label{sec:acceleration-efficiency}
 
