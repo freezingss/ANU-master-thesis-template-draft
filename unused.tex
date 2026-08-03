@@ -1,9 +1,9 @@
-\chapter{Neyman-Scott Problems Extension}
-\label{cha:neyman-scott}
+In many statistical applications, data are often incomplete due to missing observations, measurement corruption, or the presence of latent variables. These issues make the computation of maximum likelihood estimate (MLE) considerably more difficult than in fully observed settings. The Expectation–Maximization (EM) algorithm was developed to address this challenge, and its effectiveness has been further enhanced by advances in modern computing. Consequently, EM has become a fundamental method for likelihood-based inference with incomplete data, leading to an extensive body of research on its computational and statistical properties. 
+
+However, their use in high-dimensional applications  may be very limited as both the storage requirements and the additional computational cost per-iteration can quickly become burdensome as the number of model parameters grows. 
 
 The consistency result of Theorem~\ref{thm:fixed-q-theorem} in Chapter~\ref{cha:computational-acceleration} is reassuring but addresses the regime opposite to the one that motivates this thesis. There we fixed the category dimension $Q$ and let the number of groups $J\to\infty$. In that classical settings, the loading matrix $\mathbf{B}$ is estimated consistently. However, the applications of Chapter~\ref{cha:intro} live in the regime $Q\to\infty$ with $J$ fixed. This chapter shows that the two regimes differ not merely quantitatively but qualitatively. In the large-$Q$ regime the estimator of the loading subspace ceases to be consistent, and the mechanism responsible is structural relative of the classical incidental-parameter problem.
 
-\section{Incidental Parameter Problem Transposed}
 \citet{https://www.jstor.org/stable/1914288} exhibited a class of models in which the maximum likelihood estimator is inconsistent. In their canonical example, $y_{jk}\sim \mathcal{N}(\mu_{j},\sigma^{2})$ for $j$ groups and $k$ replicates per group, with $n$ fixed and $J\to\infty$. Each group carries its own nuisance mean $\mu_{j}$, so the number of parameters grows with the sample size. Profiling them out leaves a downward-biased estimator (\cite{Amari2016}) 
 \begin{equation}
     \hat{\sigma}^2 = \tfrac{n-1}{n}\sigma^2,
@@ -19,8 +19,6 @@ We separate this phenomenon from repairable bias. Conditional likelihood propose
 
 Two consequences of this ceiling organize the reminder of this chapter. The first is a direct analogue of the classical variance bias. The idiosyncratic variance estimator inherits a $\frac{J-K}{J}$ downward bias, which is the factor-analytic counterpart of the $\frac{n-1}{n}$ deflation in the Neyman-Scott normal example and vanishing only as $J\to\infty$. The second is the split in the asymptotic behavior of the estimator across its blocks. The fixed-effect and score directions governed by the $Q$ independent Poisson sub-problems of the Poisson-Multinomial equivalence in section~\ref{sec:PME}
 
-\section{Fisher Information}
-\label{sec:fisher-info}
-
 This section constructs the Fisher information of the observed data for the loading matrix $\mathbf{B}\in\mathbb{R}^{Q\times K}$ and establishes the bound of the plateau. Two structural facts drive everything. First, the loading matrix $\mathbf{B}$ enters 
+
 
