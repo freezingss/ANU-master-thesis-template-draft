@@ -1,6 +1,91 @@
-\chapter{Literature Review}
-\label{cha:literature-review}
+\chapter{Background}
+\label{cha:model-specification}
 
+Given the notation of our thesis in section~\ref{sec:model-setup}, we start from the  literature review in section~\ref{sec:literature-review}, the introduction of Poisson-Multinomial Equivalence in section~\ref{sec:PME}, and EM (Expectation-Maximization) algorithm in section~\ref{sec: em-algorithm-relatives}.
+
+\section{Models}
+\label{sec:model-setup}
+Let $\bm{y}_{ij} = (y_{ij1}, \dots, y_{ijQ})^\top \in \mathbb{Z}_{\geq 0}^Q$ be the response for $i=1,2,\dots,I_{j}$ observational units in cluster $j=1,2,\dots ,J$. The entries of $\bm{y}_{ij}$ denote the count representing category-specific choices spanning $Q$ distinct categories. A vector of covariates, $\bm{v}_{ij}\in \mathbb{R}^{P}$, may also be recorded for each unit. Let $y_{ij\cdot}=\sum_{q=1}^{Q}y_{ijq}$ denote the Multinomial total sum for observation $i$ in group $j(i)$ across $Q$ categories. We omit a constant term from $\bm{v}_{ij}$ to avoid redundancy with the category-specific intercepts already captured by main effects $\bm{\mu}$. Conditional on the total count $y_{ij\cdot}$ and random effects $\bm{\lambda}_{j}\in \mathbb{R}^{Q}$, each observation follows a Multinomial distribution:
+\begin{equation}
+    \bm{y}_{ij} \mid  y_{ij\cdot} , \bm{\lambda}_{j}
+    \sim \operatorname{Multinomial}\left(y_{ij\cdot},\, \bm{p}_{ij}\right), \quad p_{ijq}=\frac{\exp(\eta_{ijq})}{\sum_{q'=1}^{Q}\exp(\eta_{ijq'})},
+    \label{eq:conditional-pm}
+\end{equation}
+with log-linear predictor,
+\begin{equation}
+    \eta_{ijq}=\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q}+
+    \lambda_{jq}, \quad q=1,2,\dots, Q.
+    \label{eq:linear-predictor}
+\end{equation}
+$\mu_{q}\in\mathbb{R}$ is the category-specific intercept. Our main focus is on $\bm{\lambda}_{j}$ is the contribution of group $j$ to the log-relative-rate of category $q$. Equation~\eqref{eq:linear-predictor} extends the linear predictor of DMR \citep{Taddy_2015} and of the Poisson extension of \citet{lee2017poissontrickextensionsfitting}; the three models differ only in the distribution placed on $\bm{\lambda}_{j}$.
+
+The softmax link in \eqref{eq:conditional-pm} is invariant under the shift $\eta_{ijq}\mapsto\eta_{ijq}+c_{ij}$ for any constant $c_{ij}$ common to all categories, so the intercepts $\bm{\mu}=(\mu_{1},\dots,\mu_{Q})$ are identified only up to an additive constant. We remove the indeterminacy by imposing the reference constraint $\mu_{1}=0$ (equivalently a sum-to-zero constraint $\sum_{q}\mu_{q}=0$). This indeterminacy restores automatically by the Poisson representation introduced below, in which each category carries its own offset.
+
+Throughout, we treat the total count $y_{ij\cdot}$ as ancillary for $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. We assume its generating mechanism carries no information about these parameters beyond what they already encoded, so conditioning on $y_{ij\cdot}$ in \eqref{eq:conditional-pm} loses no relevant information. This is standard in Multinomial regression, but it is not automatic. We do not attempt a joint model of volumn and composition  here. To be clear, ancillarity is about information, not determinism: the total is still random, its distribution just carries no extra information about $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. In Section~\ref{sec:PME}, we use the Poisson-Multinomial equivalence to represent each $y_{ijq}$ as an independent Poisson variate, whose offset $\xi_{ij}$ absorbs the (random) total. Conditioning on $y_{ij\cdot}$ recovers the Multinomial conditional in \eqref{eq:conditional-pm} exactly. We treat $\xi_{ij}$ as a computational device but not a modeling claim about the total.
+
+The group random effects are assumed independently and identically distributed:
+
+\begin{equation}
+    \bm{\lambda}_{j}\sim \mathcal{N}(\bm{0},\bm{\Sigma}), \quad \bm{\Sigma}=\mathbf{BB}^{\top}+\mathbf{D},
+    \label{eq: Overall notation structure}
+\end{equation}
+where $\mathbf{B}\in \mathbb{R}^{Q\times K}$ is the factor loadings matrix and $\mathbf{D}$ is the variance. Equivalently, in the factor regression form:
+
+\begin{equation}
+    \bm{\lambda}_{j}=\mathbf{B}\mathbf{f}_{j}+
+    \bm{\epsilon}_{j}, \quad \mathbf{f}_{j}\sim \mathcal{N}(\bm{0},\bm{I}_{K}), \quad \bm{\epsilon}_{j}\sim \mathcal{N}(\bm{0},\mathbf{D}),
+    \label{eq: Detailed notation structure}
+\end{equation}
+so that $\lambda_{jq}=\mathbf{b}_{q}^{\top}\mathbf{f}_{j}+\epsilon_{jq}$, where $\mathbf{b}_{q}$ is the q-th row of $\mathbf{B}$. We use \eqref{eq: Overall notation structure} for inference and \eqref{eq: Detailed notation structure} for interpretation.
+
+We assume $\mathbf{D}=\sigma^{2}\mathbf{I}_{Q}$ with $\sigma^{2} >0$ rather than the fully diagonal $\mathbf{D}=\text{diag}(d_{1}^{2},\dots,d_{Q}^{2})$ with entries $d_{q}>0$. This reflects the modeling view that, once the factor structure $\mathbf{B}$ and the intercepts $\mu$ have absorbed the systematic between-category structure, the residual noise has no a prior reason to differ across categories. It also keeps the parameter count in $\mathbf{D}$ from growing with $Q$. As a further benefit, this choice simplifies the Woodbury reduction introduced in Chapter~\ref{cha:computational-acceleration}, whose complexity expression is considerably harder to state under the fully diagonal assumption.
+
+In many settings, we categorize the latent factors into orthogonal and non-orthogonal \citep{Cui2026}. Orthogonal factors are assumed to be independent, which illustrates the relationship of factors in our group random effects \eqref{eq: Detailed notation structure}. In this section, we present the conditions that guarantee the rotational identifiability, which are treated as given in the rest of the thesis. 
+
+Both linear latent factor model and the generalized latent factor model suffer form rotational indeterminacy, which is the primary source of non-identification in factor analysis \citep{BAI2012, BAI201318}. The factor structure \eqref{eq: Detailed notation structure} is subject to classical indeterminacy, which includes both rotational and sign indeterminacy. For any $K\times K$ orthogonal matrix $\mathbf{V}$, the substitution $(\mathbf{B},\mathbf{f}_{j})\to (\mathbf{BV},\mathbf{V}^{\top}\mathbf{f}_{j})$ leaves the distribution of $\bm{\lambda}_{j}$ unchanged. Also, the substitution $(\mathbf{b}_{k},\mathbf{f}_{j})\to (-\mathbf{b}_{k},-\mathbf{f}_{j})$ product of $\mathbf{b}_{q}\mathbf{f}_{k}$ is the same as $(-\mathbf{b}_{q})(-\mathbf{f}_{k})$. 
+
+A more common approach in applications to ensure identifiability is to prescribe zeros in the loading matrix $\mathbf{B}$. Under our orthogonal assumption, the additional $K(K-1)/2$ constrains are imposed by fixing $K(K-1)/2$ entries to be zeros. Interestingly, the Example~\eqref{eg:no-rotational} shows that not all configurations of the $K(K-1)/2$ zeros ensure identifiability.
+
+\begin{example}
+    This example was given by~\citet{Cui2026}. We set $K=3$ and assign at least 3 zeros in loading matrix $\mathbf{B}$. Consider the loading matrix $\mathbf{B}$ and the orthogonal transformation matrix $\mathbf{G}$,
+    \begin{equation*}
+        \mathbf{B}_{[1:2,]}=
+        \begin{pmatrix}
+            0 & a_{12} & a_{13} \\
+            a_{21} & 0 & 0 
+        \end{pmatrix}, \quad \mathbf{G}_{\theta}=
+        \begin{pmatrix}
+            1 & 0 & 0 \\
+            0 & \cos \theta & \sin \theta \\
+            0 & -\sin \theta & \cos \theta
+        \end{pmatrix}.
+    \end{equation*}
+    For any $\theta$, 
+    \begin{equation*}
+        [\mathbf{B}\mathbf{G}_{\theta}]_{[1:2,]}
+        =
+        \begin{pmatrix}
+            0 & *_{12} & *_{13} \\
+            a_{21} & 0 & 0 
+        \end{pmatrix}.
+    \end{equation*}
+    
+    For any $\theta$, the zero pattern of $[\mathbf{B}\mathbf{G}_{\theta}]_{[1:2,]}$ retains the same as $\mathbf{B}_{[1:2,]}$. Thus, the above transformation matrix $\mathbf{G}_{\theta}$ leaves the factor covariance matrix unchanged, which is not rotationally identifiable under this constraint. 
+    \label{eg:no-rotational}
+\end{example}
+
+Example~\eqref{eg:no-rotational} shows that a necessary condition for identifiability is that no two columns of the loading matrix share the same zero pattern. To avoid these cases, we consider the following sufficient condition that covers many commonly used identifiability constraints. Thus, we give the positive lower triangular constraint to recover the true value of matrix $\mathbf{B}$, 
+
+\begin{equation}
+    b_{qk}=0 \text{ for } q<k,\quad b_{kk}>0 \text{ for }k=1,2,\dots ,K,
+    \label{eq: PLT}
+\end{equation}
+which solves the rotationally indeterminacy and sign indeterminacy. \citet{Cui2026} had proved many sufficient constraints, and we adapt their IC$^{(2)}$ with orthogonal latent variables in factor analysis.
+
+
+
+\section{Literature Review}
+\label{sec:literature-review}
 High-dimensional multivariate count data with group structure arises across many modern applications. In computational linguistics, documents partition into authors or topics, and each document is a vocabulary-sized word-count vector \citep{Taddy_2015}. In micro-biome ecology, samples nest within subjects while the response be a vector of taxonomic abundances over hundreds of taxa \citep{Tu2023}. Despite their diversity, these settings share a common structure with $I$ observations in $J$ groups, whose individual observation is a count vector $\bm{y}_{ij} \in \mathbb{Z}^Q_{\geq 0}$ over $Q$ categories.
  
 The modeling challenge has two dimensions. The compositional aspect calls for the Multinomial distribution with a log-linear softmax link. The hierarchical aspect requires group-level random effects to capture dependence among observations from the same group. Ignoring this structure inflates Type~I error and introduces confounding bias in fixed-effect estimates \citep{Lee2019AnalysisOG}. The literature has addressed these two dimensions largely in isolation. The present work provides a synthesis suited to the large-$Q$ regime.
@@ -16,3 +101,71 @@ DMR and standard MLR remain important baselines, but their central limitation is
 \citet{Tu2023} introduced logistic-normal multinomial (LNM) factor analyzers with a factor-structured observation-level covariance $\bm{\Sigma} = \mathbf{BB}^{\top} + \bm{\Psi}$, $\bm{\Psi} = \mathrm{diag}(\psi_1,\ldots,\psi_Q)$. The EM algorithm uses a variational Gaussian approximation in the E-step and the Rubin-Thayer iterations \citep{Rubin1982} in the M-step. Their LNM-FA shares the factor-analytic motivation of the present work, which point motivated our work targeting to structure a group-level random effect $\bm{\lambda}_j = \mathbf{B}\mathbf{f}_j + \bm{\epsilon}_j$, adopting the spherical simplification $\mathbf{D} = \sigma^2\mathbf{I}_Q$. 
 
 Relative to PLN-PCA, we add a group-level hierarchical structure, a spherical idiosyncratic term, and Laplace inference. Relative to LNM-FA, the principal advances are the group-level factor structure and the large-$Q$ consistency theory. Relative to DMR, we add group-level random effects with a factor prior, thus DMR can be recovered as the special case when $J = 1$.
+
+
+
+
+\iffalse
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figs/data_structure.drawio.pdf}
+    \caption{Data Structure: Orthogonal case that each latent factors $f1$–$f3$ is independent to others. Each directed edge represents that a latent factor affects the response variable $\bm{y}_{ij}$ for $j\in\{1,2\}$. Notice that each latent factor affects all groups publicly.}
+    \label{fig:data_structure}
+\end{figure}
+\fi
+
+\section{Poisson-Multinomial Equivalence}
+\label{sec:PME}
+    
+The Poisson-Multinomial Equivalence established by \citet{10.2307/2348134} states that the Multinomial likelihood conditional on $y_{ij\cdot}$ is exactly equivalent to a product of independent Poisson likelihoods sharing a common additive offset,
+
+\begin{equation}
+    \xi_{ij} = \log y_{ij\cdot} - \log\sum_{q=1}^Q \exp(\eta_{ijq}),
+    \label{eq:xi_baker}
+\end{equation}
+
+The joint Multinomial draw $\bm{y}_{ij} \mid \bm{\lambda}_{j} \sim \mathrm{Multinomial}(y_{ij\cdot}, \bm{p}_{ij})$ is equivalent to $y_{ijq} \mid \bm{\lambda}_{j} \sim \mathrm{Poisson}(\exp(\eta_{ijq} + \xi_{ij}))$ independently for $q = 1, \ldots, Q$, conditional on $y_{ij\cdot}$. We give the definition of $\eta_{ijq}$ and $\bm{p}_{ij}$ in section~\ref{sec:two-level-hierarchy}. The offset~\eqref{eq:xi_baker} absorbs the softmax normalizer and decouples the $Q$ Poisson problems, thus we can solve these $Q$ Poisson independently. 
+
+\citet{lee2017poissontrickextensionsfitting} extended the framework of \citet{10.2307/2348134} by treating the aggregate count $y_{ij\cdot}$ as Poisson-distributed given the group effect $\bm{\lambda}_{j}$, rather than fixing it as the conditioning variable in the Multinomial likelihood. Marginalizing over this random aggregate recovers the same factorization into independent Poisson components across categories $q = 1, \dots, Q$. As a result, $\xi_{ij}$ becomes the rate parameter of this induced Poisson distribution instead of a fixed conditioning quantity.
+
+This chapter carries the same idea one step further into E-step. In the standard Laplace E-step, $\bm{\lambda}_j$ is updated via Newton's method~\eqref{eq:newton-method} on the full Multinomial log-posterior $\ell(\bm{\lambda}_j)$. The bottleneck is the term in Hessian $\sum_{i \in \mathcal{I}_j} y_{ij\cdot} \bm{p}_{ij} \bm{p}_{ij}^\top$, which comes from the softmax normalizer with rank-$I_j$. This term couples all $Q$ categories together, so each Newton step requires an $O(Q^3)$ linear solve. Inspired by the insight of~\citet{lee2017poissontrickextensionsfitting}, we introduce $\xi_{ij}$ as an explicit auxiliary variable in the E-step. Holding $\xi_{ij}$ fixed while updating $\bm{\lambda}_j$ removes the log-sum-exp coupling entirely, so the Hessian reduces to a diagonal matrix, enabling a second Woodbury reduction cutting the per-step cost from $O(Q(I_j + K))$ down to $O(QK^2 + K^3)$. 
+
+
+
+\iffalse
+\begin{remark}[Variance decomposition]
+The variance of the log-relative-rate of category $q$ decomposes as 
+\begin{equation*}
+    \operatorname{Var}(\lambda_{jq})=\|\mathbf{b}_{q}\|^{2}+\sigma^{2},
+\end{equation*}
+where $\|\mathbf{b}_{q}\|^{2}$ captures the structured factor component and $\sigma^2$ the idiosyncratic component. The ratio $\|\mathbf{b}_{q}\|^2/(\|\mathbf{b}_{q}\|^2+\sigma^2)$ quantifies the proportion of between-group variation in category $q$ explained by the latent factors. 
+\end{remark}
+\fi
+
+
+\section{EM Algorithm \& Relatives}
+\label{sec: em-algorithm-relatives}
+
+In order to have a good understanding for further discussion, we briefly review the classical EM algorithm in this section. Then we discuss the models that have the similar structure with our model. 
+
+Let $Y$ and $Z$ be random variables taking values in the sample spaces $\mathcal{Y}$ and $\mathcal{Z}$, respectively. Suppose that the pair $(Y,Z)$ has a joint density function $f_{\theta^{*}}$ that belongs to some parameterized family $\{f_{\theta}\mid \theta\in \Omega
+\}$, for a non-empty compact convex set $\Omega$. Rather than observing complete data $(Y,Z)$, we observe only component $Y$.Thus, the component $Z$ corresponds to the missing or latent structure in the data. Our goal is to obtain an estimate of the unknown parameter $\theta^{*}$ via maximum likelihood to compute some $\hat{\theta}\in\Omega$ maximizing the function $\theta\mapsto g_{\theta}(y)$, where
+
+\begin{equation}
+    g_{\theta}(y)=\int_{\mathcal{Z}}f_{\theta}(y,z)\,dz
+    \label{eq:classical-em-integral}
+\end{equation}
+is the density function of the observed variable $Y$.
+
+In many settings, computing log likelihood $\log f_{\theta}(y,z)$ of both latent variables and observed data is easier and computationally cheaper than evaluating the log likelihood of the observed data itself. The EM algorithm is well-suited to such settings. For each $\theta\in\Omega$, let $k_{\theta}(z\mid y)$ denote the conditional density of $z$ given by $y$, then the log likelihood at $\theta^{'}\in\Omega$ can be lower bounded using Jensen's inequality
+\begin{equation}
+    \log g_{\theta'}(y) \;\ge\; \underbrace{\int_{\mathcal{Z}} k_\theta(z \mid y) \log f_{\theta'}(y,z)\, dz}_{Q(\theta' \mid \theta)} \;-\; \int_{\mathcal{Z}} k_\theta(z \mid y) \log k_\theta(z \mid y)\, dz,
+    \label{eq:classical-em-jensen}
+\end{equation}
+the equality holds when $\theta=\theta^{'}$. Thus, we have a family of lower bounds on the log likelihood, denoted by $Q(\cdot\mid \cdot)$. We maximize this lower bound in M-step
+\begin{equation}
+    \theta^{(t+1)}=\arg\max_{\theta^{'}\in\Omega}Q(\theta^{'}\mid \theta^{(t)}),
+    \label{eq:em-m-step}
+\end{equation}
+and then re-evaluates the lower bound at the new parameter value in E-step.
+
