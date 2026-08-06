@@ -1,26 +1,49 @@
-# =============================================================================
-# pfa_base_dense_armijo.R
-# =============================================================================
+library(glmmTMB)
+library(bench)
+library(nnet) # multinomial
+library(psych) # fa package
+library(Matrix)
 
-# =============================================================================
-# 1. SHARED HELPERS
-# =============================================================================
-
-apply_PLT <- function(B) {
-  K      <- ncol(B)
-  qr_obj <- qr(t(B[1:K, , drop = FALSE]))
-  B_rot  <- B %*% qr.Q(qr_obj)
-  for (k in 1:K) if (B_rot[k, k] < 0) B_rot[, k] <- -B_rot[, k]
-  for (k in 1:K) if (k > 1) B_rot[1:(k - 1), k] <- 0
-  B_rot
+# glmmTMB reference fit (without idiosyncratic variance)
+add_offset <- function(long, Y) {
+  tot <- rowSums(Y)                  
+  long$log_total <- log(pmax(tot[as.integer(long$obs)], 1))
+  long
 }
 
-row_softmax   <- function(eta) { mx <- apply(eta, 1, max); ee <- exp(eta - mx); ee / rowSums(ee) }
-row_logsumexp <- function(eta) { mx <- apply(eta, 1, max); mx + log(rowSums(exp(eta - mx))) }
+fit_pfa_glmmTMB <- function(Y, X, group, K,
+                            covariate_terms = NULL, 
+                            reml = FALSE) {
+  long <- add_offset(build_long(Y, X, group), Y)
 
-# =============================================================================
-# 2. E-STEP: exact dense Newton for one group
-# =============================================================================
+  rhs_fixed <- "category"
+  if (!is.null(covariate_terms)) rhs_fixed <- paste(rhs_fixed, "+", covariate_terms)
+  
+  form <- as.formula(
+    paste0("count ~ ", rhs_fixed,
+           " + rr(category + 0 | group, d = ", K, ")")
+  )
+  
+  glmmTMB(form,
+          data = long,
+          family = poisson(link = "log"),
+          offset = long$log_total,
+          REML = reml)
+}
+
+extract_loadings <- function(fit) {
+  vc <- VarCorr(fit)$cond$group # Q x Q reduced-rank covariance factor loadings:
+  # leading-K eigen-decomposition of the rr covariance
+  e  <- eigen((vc + t(vc)) / 2, symmetric = TRUE)
+  # eigs_sym accelerate?
+  K  <- attr(vc, "d"); if (is.null(K)) K <- sum(e$values > 1e-8)
+  L  <- e$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(e$values[1:K], 0)), K)
+  list(B = L, cov = vc)
+}
+
+# dense multinomial follow the thesis
+row_softmax <- function(eta) { mx <- apply(eta, 1, max); ee <- exp(eta - mx); ee / rowSums(ee) }
+row_logsumexp <- function(eta) { mx <- apply(eta, 1, max); mx + log(rowSums(exp(eta - mx))) }
 
 laplace_lambda_j_dense <- function(Y_j, X_j, M_j, mu, phi, Sigma_inv,
                                   max_iter = 100, gtol = 1e-3, bt_max = 30,
@@ -42,38 +65,31 @@ laplace_lambda_j_dense <- function(Y_j, X_j, M_j, mu, phi, Sigma_inv,
     eta <- sweep(fixed, 2, lambda, "+")
     pi <- row_softmax(eta)
     Mpi <- sweep(pi, 1, M_j, "*")
-
-    # Exact gradient of the log posterior.
     g <- as.numeric(colSums(Y_j - Mpi)) - as.numeric(Sigma_inv %*% lambda)
-
-    # Convergence on the GRADIENT (g = 0 is the optimality condition).
     if (max(abs(g)) < gtol) break
 
-    # Exact negative Hessian of the log posterior (dense Q x Q):
-    #   H = sum_i M_i (diag(pi_i) - pi_i pi_i') + Sigma^{-1}.
-    # sum_i M_i diag(pi_i)   = diag(colSums(Mpi))
-    # sum_i M_i pi_i pi_i'   = t(pi) %*% Mpi
     H <- diag(as.numeric(colSums(Mpi)), Q) - crossprod(pi, Mpi) + Sigma_inv
-    dir <- tryCatch(solve(H, g), error = function(e) g * 0.01)  # O(Q^3)
-    gd <- sum(g * dir)                                         # g' dir > 0  (H is PD)
+    dir <- tryCatch(solve(H, g), error = function(e) g * 0.01)  
+    gd <- sum(g * dir)                                        
 
-    # Armijo backtracking on the TRUE posterior (sufficient increase).
     step <- 1; accepted <- FALSE
     for (bt in 1:bt_max) {
       if (lp(lambda + step * dir) >= lp_cur + c1 * step * gd) { accepted <- TRUE; break }
       step <- step * 0.5
     }
-    if (!accepted) break                # no Armijo step within bt_max: at the mode
+    if (!accepted) break               
     lambda <- lambda + step * dir
     lp_cur <- lp(lambda)
   }
 
-  # Exact multinomial curvature at the mode -> Laplace covariance.
   eta <- sweep(fixed, 2, lambda, "+")
   pi <- row_softmax(eta)
   Mpi <- sweep(pi, 1, M_j, "*")
   H <- diag(as.numeric(colSums(Mpi)), Q) - crossprod(pi, Mpi) + Sigma_inv
-  S_hat <- tryCatch(solve(H), error = function(e) diag(Q) * 1e-3)
+  S_hat <- tryCatch({
+    Hc <- Cholesky(H)
+    S_hat <- solve(Hc, Diagonal(nrow(H)))
+  }, error = function(e) {diag(Q) * 1e-3})
   ldS <- -as.numeric(determinant(H, logarithm = TRUE)$modulus)
 
   list(lambda_hat = lambda, S_hat = S_hat, lp_mode = lp_cur,
@@ -84,7 +100,10 @@ estep_dense <- function(J, group, Y, X, M, mu, phi, B, sigma2,
                         max_iter = 100, gtol = 1e-3) {
   Q <- length(mu)
   Sigma <- B %*% t(B) + sigma2 * diag(Q)
-  Sigma_inv <- tryCatch(solve(Sigma), error = function(e) diag(Q) / sigma2)
+  Sigma_inv <- tryCatch({
+    cholSigma <- Cholesky(Sigma)
+    solve(choSigma, Diagonal(Q))
+  }, error = function(e) {diag(Q) / sigma2})
   ldSigma <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
 
   lambda_hat <- matrix(0, Q, J)
@@ -111,11 +130,6 @@ estep_dense <- function(J, group, Y, X, M, mu, phi, B, sigma2,
        lp_total = lp_total, ld_S_total = ld_S_total,
        log_det_Sigma = ldSigma)
 }
-
-
-# =============================================================================
-# 3. M-STEP (a): fixed effects (mu, phi) via Q parallel Poisson GLMs
-# =============================================================================
 
 mstep_phi_dense <- function(Y, X, group, lambda_hat, mu, phi, lambda_phi = 0) {
   N <- nrow(Y); Q <- ncol(Y); P <- ncol(X)
@@ -165,10 +179,6 @@ pois_ridge_irls <- function(X, y, off, lambda, max_iter = 50, tol = 1e-8) {
   as.numeric(beta)
 }
 
-# =============================================================================
-# 4. M-STEP (b): (B, sigma2) via Rubin-Thayer, spherical noise, DENSE version
-# =============================================================================
-
 rubin_thayer_spherical <- function(Sigma_obs, K, B_init = NULL,
                                    sigma2_init = 0.3,
                                    max_iter = 500, tol = 1e-10) {
@@ -194,11 +204,6 @@ rubin_thayer_spherical <- function(Sigma_obs, K, B_init = NULL,
   }
   list(B = B, sigma2 = sigma2)
 }
-
-
-# =============================================================================
-# 5. MAIN FITTER
-# =============================================================================
 
 fit_pfa_dense <- function(Y, X, group, K,
                           M = rowSums(Y),
@@ -234,22 +239,18 @@ fit_pfa_dense <- function(Y, X, group, K,
 
   for (em in 1:max_iter) {
 
-    # ---- E-step: posterior modes and covariances for every group ----
     es <- estep_dense(J, group, Y, X, M, mu, phi, B, sigma2,
                              max_iter = estep_max_iter, gtol = estep_gtol)
     lambda_hat <- es$lambda_hat
     S_hat <- es$S_hat
 
-    # ---- Laplace log-evidence monitor ----
     log_ev[em] <- es$lp_total - 0.5 * J * es$log_det_Sigma +
       0.5 * es$ld_S_total
 
-    # ---- M-step (a): fixed effects mu, phi (Q parallel Poisson GLMs) ----
     mp <- mstep_phi_dense(Y, X, group, lambda_hat, mu, phi,
                            lambda_phi = lambda_phi)
     mu <- mp$mu; phi <- mp$phi
 
-    # ---- M-step (b): factor loadings B, sigma2 (Rubin-Thayer) ----
     S_obs <- tcrossprod(lambda_hat) / J
     for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
     rt <- rubin_thayer_spherical(S_obs, K,
@@ -260,7 +261,6 @@ fit_pfa_dense <- function(Y, X, group, K,
     if (verbose) cat(sprintf("iter %3d  log_ev = %.4f  sigma2 = %.4f\n",
                              em, log_ev[em], sigma2))
 
-    # ---- convergence on the Laplace log-evidence ----
     if (em > 1 &&
         abs(log_ev[em] - log_ev[em - 1]) <
         tol * (abs(log_ev[em - 1]) + 1)) { converged <- TRUE; break }

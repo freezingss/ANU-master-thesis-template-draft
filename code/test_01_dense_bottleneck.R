@@ -12,22 +12,22 @@ K <- 2
 n_rep <- 200                 
 
 cat("=============================================================\n")
-cat(" (1) Dense Newton solve  solve(H, g)  --  one E-step iteration\n")
+cat(" (1) Dense Newton solve  solve(H, g) - one E-step iteration\n")
 cat("=============================================================\n")
 cat(sprintf("%8s %14s %14s\n", "Q", "ms/solve", "vs Q=50"))
 
 t_solve <- numeric(length(Qs))
 for (qi in seq_along(Qs)) {
-  Q   <- Qs[qi]
+  Q <- Qs[qi]
   dat <- simulate_pfa_data(Q = Q, K = K, J = 5, N_per_group = 15, seed = qi)
   idx <- which(dat$group == 1)
   Y_j <- dat$Y[idx, , drop = FALSE]; X_j <- dat$X[idx, , drop = FALSE]
   M_j <- dat$M[idx]
 
-  tr        <- dat$true
-  Sigma     <- tr$B %*% t(tr$B) + tr$sigma2 * diag(Q)
+  tr <- dat$true
+  Sigma <- tr$B %*% t(tr$B) + tr$sigma2 * diag(Q)
   Sigma_inv <- solve(Sigma)
-  fixed     <- matrix(rep(tr$mu, each = length(idx)), length(idx), Q) +
+  fixed <- matrix(rep(tr$mu, each = length(idx)), length(idx), Q) +
     X_j %*% tr$phi
   eta <- fixed
   pi <- row_softmax(eta)
