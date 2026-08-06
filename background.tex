@@ -14,14 +14,15 @@ Let $\bm{y}_{ij} = (y_{ij1}, \dots, y_{ijQ})^\top \in \mathbb{Z}_{\geq 0}^Q$ be 
 with log-linear predictor,
 \begin{equation}
     \eta_{ijq}=\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q}+
-    \lambda_{jq}, \quad q=1,2,\dots, Q.
+    \lambda_{jq}, \quad q=1,2,\dots, Q,
     \label{eq:linear-predictor}
 \end{equation}
-$\mu_{q}\in\mathbb{R}$ is the category-specific intercept. Our main focus is on $\bm{\lambda}_{j}$ is the contribution of group $j$ to the log-relative-rate of category $q$. Equation~\eqref{eq:linear-predictor} extends the linear predictor of DMR \citep{Taddy_2015} and of the Poisson extension of \citet{lee2017poissontrickextensionsfitting}; the three models differ only in the distribution placed on $\bm{\lambda}_{j}$.
+where $\mu_{q}\in\mathbb{R}$ is the category-specific intercept. In this thesis, we focus on the contribution $\bm{\lambda}_{j}$ of group $j$ to the log-relative-rate of category $q$. Equation~\eqref{eq:linear-predictor} extends the linear predictor of DMR \citep{Taddy_2015} and of the Poisson extension of \citet{lee2017poissontrickextensionsfitting}; the three models differ only in the distribution placed on $\bm{\lambda}_{j}$.
 
-The softmax link in \eqref{eq:conditional-pm} is invariant under the shift $\eta_{ijq}\mapsto\eta_{ijq}+c_{ij}$ for any constant $c_{ij}$ common to all categories, so the intercepts $\bm{\mu}=(\mu_{1},\dots,\mu_{Q})$ are identified only up to an additive constant. We remove the indeterminacy by imposing the reference constraint $\mu_{1}=0$ (equivalently a sum-to-zero constraint $\sum_{q}\mu_{q}=0$). This indeterminacy restores automatically by the Poisson representation introduced below, in which each category carries its own offset.
+The softmax link in \eqref{eq:conditional-pm} is invariant under the shift $\eta_{ijq}\mapsto\eta_{ijq}+c_{ij}$ for any constant $c_{ij}$ common to all categories, so the intercepts $\bm{\mu}=(\mu_{1},\dots,\mu_{Q})$ are identified only up to an additive constant. We remove the indeterminacy by sum-to-zero constraint $\sum_{q}\mu_{q}=0$, which automatically restores by the Poisson representation introduced below.
 
-Throughout, we treat the total count $y_{ij\cdot}$ as ancillary for $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. We assume its generating mechanism carries no information about these parameters beyond what they already encoded, so conditioning on $y_{ij\cdot}$ in \eqref{eq:conditional-pm} loses no relevant information. This is standard in Multinomial regression, but it is not automatic. We do not attempt a joint model of volumn and composition  here. To be clear, ancillarity is about information, not determinism: the total is still random, its distribution just carries no extra information about $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. In Section~\ref{sec:PME}, we use the Poisson-Multinomial equivalence to represent each $y_{ijq}$ as an independent Poisson variate, whose offset $\xi_{ij}$ absorbs the (random) total. Conditioning on $y_{ij\cdot}$ recovers the Multinomial conditional in \eqref{eq:conditional-pm} exactly. We treat $\xi_{ij}$ as a computational device but not a modeling claim about the total.
+% Need to polish the writing
+Throughout, we treat the total sum $y_{ij\cdot}$ as ancillary for $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. We assume its generating mechanism carries no information about these parameters beyond what they already encoded, so conditioning on $y_{ij\cdot}$ in \eqref{eq:conditional-pm} loses no relevant information. This is standard in Multinomial regression, but it is not automatic. We do not attempt a joint model of volumn and composition  here. To be clear, ancillarity is about information, not determinism: the total is still random, its distribution just carries no extra information about $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. In Section~\ref{sec:PME}, we use the Poisson-Multinomial equivalence to represent each $y_{ijq}$ as an independent Poisson variate, whose offset $\xi_{ij}$ absorbs the (random) total. Conditioning on $y_{ij\cdot}$ recovers the Multinomial conditional in \eqref{eq:conditional-pm} exactly. We treat $\xi_{ij}$ as a computational device but not a modeling claim about the total.
 
 The group random effects are assumed independently and identically distributed:
 
@@ -36,13 +37,22 @@ where $\mathbf{B}\in \mathbb{R}^{Q\times K}$ is the factor loadings matrix and $
     \bm{\epsilon}_{j}, \quad \mathbf{f}_{j}\sim \mathcal{N}(\bm{0},\bm{I}_{K}), \quad \bm{\epsilon}_{j}\sim \mathcal{N}(\bm{0},\mathbf{D}),
     \label{eq: Detailed notation structure}
 \end{equation}
-so that $\lambda_{jq}=\mathbf{b}_{q}^{\top}\mathbf{f}_{j}+\epsilon_{jq}$, where $\mathbf{b}_{q}$ is the q-th row of $\mathbf{B}$. We use \eqref{eq: Overall notation structure} for inference and \eqref{eq: Detailed notation structure} for interpretation.
+so that $\lambda_{jq}=\mathbf{b}_{q}^{\top}\mathbf{f}_{j}+\epsilon_{jq}$, where $\mathbf{b}_{q}$ is the q-th row of $\mathbf{B}$. We assume each group $j$ has a $K$-dimensional factor $\bm{f}_{j}$ choosing from $Q$ distinct categories, where $K$ is known. In this application, each loading entries of $\bm{\lambda}_{j}$ represents the cluster information by measuring the significance of how cluster $j$ loads on each of the latent factors. We adopt the category of orthogonal latent factors \citep{Cui2026}, which assumed to be independent and illustrated the relationship of factors in our group random effects \eqref{eq: Detailed notation structure}. Finally, we assume $\mathbf{D}=\sigma^{2}\mathbf{I}_{Q}$ with $\sigma^{2} >0$ rather than the fully diagonal $\mathbf{D}=\text{diag}(d_{1}^{2},\dots,d_{Q}^{2})$ with entries $d_{q}>0$ for the model simplification. 
 
-We assume $\mathbf{D}=\sigma^{2}\mathbf{I}_{Q}$ with $\sigma^{2} >0$ rather than the fully diagonal $\mathbf{D}=\text{diag}(d_{1}^{2},\dots,d_{Q}^{2})$ with entries $d_{q}>0$. This reflects the modeling view that, once the factor structure $\mathbf{B}$ and the intercepts $\mu$ have absorbed the systematic between-category structure, the residual noise has no a prior reason to differ across categories. It also keeps the parameter count in $\mathbf{D}$ from growing with $Q$. As a further benefit, this choice simplifies the Woodbury reduction introduced in Chapter~\ref{cha:computational-acceleration}, whose complexity expression is considerably harder to state under the fully diagonal assumption.
+\iffalse
+This reflects the modeling view that, once the factor structure $\mathbf{B}$ and the intercepts $\mu$ have absorbed the systematic between-category structure, the residual noise has no a prior reason to differ across categories. It also keeps the parameter count in $\mathbf{D}$ from growing with $Q$. As a further benefit, this choice simplifies the Woodbury reduction introduced in Chapter~\ref{cha:computational-acceleration}, whose complexity expression is considerably harder to state under the fully diagonal assumption. 
 
-In many settings, we categorize the latent factors into orthogonal and non-orthogonal \citep{Cui2026}. Orthogonal factors are assumed to be independent, which illustrates the relationship of factors in our group random effects \eqref{eq: Detailed notation structure}. In this section, we present the conditions that guarantee the rotational identifiability, which are treated as given in the rest of the thesis. 
+Given these definitions, the multivariate randon effect is given by~\eqref{eq: Overall notation structure}, which is a reduced-rank approximation that seen in factor analytic models \citep{Niku2017}. This approach makes it possible to fit large multivariate random effects, because the number of parameters required in the variance-covariance matrix is now reduced to linearity with $Q$.
+\fi
 
-Both linear latent factor model and the generalized latent factor model suffer form rotational indeterminacy, which is the primary source of non-identification in factor analysis \citep{BAI2012, BAI201318}. The factor structure \eqref{eq: Detailed notation structure} is subject to classical indeterminacy, which includes both rotational and sign indeterminacy. For any $K\times K$ orthogonal matrix $\mathbf{V}$, the substitution $(\mathbf{B},\mathbf{f}_{j})\to (\mathbf{BV},\mathbf{V}^{\top}\mathbf{f}_{j})$ leaves the distribution of $\bm{\lambda}_{j}$ unchanged. Also, the substitution $(\mathbf{b}_{k},\mathbf{f}_{j})\to (-\mathbf{b}_{k},-\mathbf{f}_{j})$ product of $\mathbf{b}_{q}\mathbf{f}_{k}$ is the same as $(-\mathbf{b}_{q})(-\mathbf{f}_{k})$. 
+Generalized latent factor model also suffers form indeterminacy, which is the primary source of non-identification in factor analysis \citep{BAI2012, BAI201318}. Thus, we set upper triangular elements of $\mathbf{B}$ to be zero to assist with parameter identifiability, without loss of generality. 
+
+\iffalse
+We use \eqref{eq: Overall notation structure} for inference and \eqref{eq: Detailed notation structure} for interpretation. 
+\fi
+
+\iffalse
+The factor structure \eqref{eq: Detailed notation structure} is subject to classical indeterminacy, which includes both rotational and sign indeterminacy. For any $K\times K$ orthogonal matrix $\mathbf{V}$, the substitution $(\mathbf{B},\mathbf{f}_{j})\to (\mathbf{BV},\mathbf{V}^{\top}\mathbf{f}_{j})$ leaves the distribution of $\bm{\lambda}_{j}$ unchanged. Also, the substitution $(\mathbf{b}_{k},\mathbf{f}_{j})\to (-\mathbf{b}_{k},-\mathbf{f}_{j})$ product of $\mathbf{b}_{q}\mathbf{f}_{k}$ is the same as $(-\mathbf{b}_{q})(-\mathbf{f}_{k})$. 
 
 A more common approach in applications to ensure identifiability is to prescribe zeros in the loading matrix $\mathbf{B}$. Under our orthogonal assumption, the additional $K(K-1)/2$ constrains are imposed by fixing $K(K-1)/2$ entries to be zeros. Interestingly, the Example~\eqref{eg:no-rotational} shows that not all configurations of the $K(K-1)/2$ zeros ensure identifiability.
 
@@ -81,27 +91,25 @@ Example~\eqref{eg:no-rotational} shows that a necessary condition for identifiab
     \label{eq: PLT}
 \end{equation}
 which solves the rotationally indeterminacy and sign indeterminacy. \citet{Cui2026} had proved many sufficient constraints, and we adapt their IC$^{(2)}$ with orthogonal latent variables in factor analysis.
-
+\fi
 
 
 \section{Literature Review}
 \label{sec:literature-review}
-High-dimensional multivariate count data with group structure arises across many modern applications. In computational linguistics, documents partition into authors or topics, and each document is a vocabulary-sized word-count vector \citep{Taddy_2015}. In micro-biome ecology, samples nest within subjects while the response be a vector of taxonomic abundances over hundreds of taxa \citep{Tu2023}. Despite their diversity, these settings share a common structure with $I$ observations in $J$ groups, whose individual observation is a count vector $\bm{y}_{ij} \in \mathbb{Z}^Q_{\geq 0}$ over $Q$ categories.
- 
-The modeling challenge has two dimensions. The compositional aspect calls for the Multinomial distribution with a log-linear softmax link. The hierarchical aspect requires group-level random effects to capture dependence among observations from the same group. Ignoring this structure inflates Type~I error and introduces confounding bias in fixed-effect estimates \citep{Lee2019AnalysisOG}. The literature has addressed these two dimensions largely in isolation. The present work provides a synthesis suited to the large-$Q$ regime.
- 
-The simplest approach treats observations as exchangeable and attributes all variation to measured covariates via Multinomial logistic regression. For large $Q$, direct Multinomial maximum likelihood is computationally prohibitive owing to the coupled softmax normalizer. \citet{10.2307/2348134} established the Poisson--Multinomial Equivalence (PME). Conditional on the total count $M_i$, the Multinomial likelihood factors can be separated into $Q$ independent Poisson log-linear models with a common additive offset $\xi_{ij}$. \citet{Taddy_2015} exploited this to propose Distributed Multinomial Regression (DMR) and applied it to large-vocabulary document classification. \citet{lee2017poissontrickextensionsfitting} subsequently formalized and extended the PME framework clarifying conditions under which it applies to a broad class of Multinomial regression models.
- 
-DMR and standard MLR remain important baselines, but their central limitation is the absence of group-level random effects. When groups differ systematically, treating observations as exchangeable absorbs unmodeled group variation into fixed-effect estimates. For the large-$Q$ setting with high-dimensional fixed effects, \citet{Correia_2020} provides efficient Poisson estimation algorithms. Our work builds on this computational tradition while additionally modeling group-level structure.
- 
-\citet{Aitchison_1989} introduced the Poisson Lognormal (PLN) distribution placing a Gaussian prior $\bm{Z}_i \sim \mathcal{N}(\bm{\mu}, \bm{\Sigma})$ on the log-linear predictors and drawing $Y_{ijq} \mid Z_{ijq} \sim \mathrm{Poisson}\bigl(\exp(Z_{iq})\bigr)$ independently. PLN captures between-category correlations and over-dispersion. However, they can not  estimate a full $Q\times Q$ covariance $\bm{\Sigma}$ in large $Q$ regime.
- 
-\citet{chiquet2018variational} addressed this via PLN-PCA, which constraining $\bm{\Sigma} = \mathbf{CC}^\top$ with $\mathbf{C}\in\mathbb{R}^{Q\times K}$ and $K\ll Q$, then used variational EM with a mean-field Gaussian approximation. PLN-PCA imposes a low-rank factor covariance, who has the closest structural antecedent to our model. The key distinctions are that PLN-PCA operates at the observation level only and no group random effect. Also, they provided no large-$Q$ asymptotic theory.
- 
-\citet{Tu2023} introduced logistic-normal multinomial (LNM) factor analyzers with a factor-structured observation-level covariance $\bm{\Sigma} = \mathbf{BB}^{\top} + \bm{\Psi}$, $\bm{\Psi} = \mathrm{diag}(\psi_1,\ldots,\psi_Q)$. The EM algorithm uses a variational Gaussian approximation in the E-step and the Rubin-Thayer iterations \citep{Rubin1982} in the M-step. Their LNM-FA shares the factor-analytic motivation of the present work, which point motivated our work targeting to structure a group-level random effect $\bm{\lambda}_j = \mathbf{B}\mathbf{f}_j + \bm{\epsilon}_j$, adopting the spherical simplification $\mathbf{D} = \sigma^2\mathbf{I}_Q$. 
 
+Multinomial settings share a common structure with $I$ observations in $J$ groups, whose individual observation is a count vector $\bm{y}_{ij} \in \mathbb{Z}^Q_{\geq 0}$ over $Q$ categories. However, the inference of original Multinomial models is challenging due to the log-linear softmax link and the group random effects. The softmax link is coupling while it requires updating through all $Q$ categories, in the meanwhile, the hierarchical aspect ignoring group structure inflates Type~I error and introduces confounding bias in fixed-effect estimates \citep{Lee2019AnalysisOG}. The literature has addressed these two dimensions largely in isolation. 
+
+The simplest approach treats observations as exchangeable and attributes all variation to measured covariates by Multinomial logistic regression. However, the maximum likelihood is computationally prohibitive owing to the coupled softmax normalizer with large number of categories. \citet{10.2307/2348134} established the Poisson--Multinomial Equivalence (PME). That is, conditional on the total count, the Multinomial likelihood (up to a constant) can be surrogate by the product of $Q$ independent Poisson log-linear models with a common additive offset. \citet{Taddy_2015} exploited this to propose Distributed Multinomial Regression (DMR) and applied it to large-vocabulary document classification. \citet{lee2017poissontrickextensionsfitting} subsequently formalized and extended the PME framework clarifying conditions under which it applies to a broad class of Multinomial regression models.
+ 
+Standard MLR and DMR remain important baselines, but their central limitation is the absence of group-level random effects. When groups differ systematically, treating observations as exchangeable absorbs unmodeled group variation into fixed-effect estimates. For the high-dimensional fixed effects, \citet{Correia_2020} provides efficient Poisson estimation algorithms. Our work builds on this computational tradition while additionally modeling group-level structure.
+ 
+With the improvement of science and technology, various fields, for example, psychology, economics and genetics, require statistical tool to analyze large-scale data, not only with huge sample size, but also with more variates (categories). Poisson Lognormal (PLN) was introduced by \citet{Aitchison_1989}, placing a Gaussian prior $\bm{Z}_i \sim \mathcal{N}(\bm{\mu}, \bm{\Sigma})$ on the log-linear predictors and drawing $Y_{ijq} \mid Z_{ijq} \sim \mathrm{Poisson}\bigl(\exp(Z_{iq})\bigr)$ independently. PLN captures between-category correlations and over-dispersion. However, they can not estimate the covariance $\bm{\Sigma}$ directly when $Q$ is larger than expected. \citet{chiquet2018variational} addressed this using PLN-PCA, which constraining $\bm{\Sigma} = \mathbf{CC}^\top$ with $\mathbf{C}\in\mathbb{R}^{Q\times K}$ and $K\ll Q$, then used variational EM with a mean-field Gaussian approximation. The key limitations are that PLN-PCA operates at the observation level only, with no group random effect and idiosyncratic covariance matrix. \citet{Tu2023} introduced logistic-normal multinomial (LNM) factor analysis with a factor-structured observation-level covariance $\bm{\Sigma} = \mathbf{BB}^{\top} + \bm{\Psi}$, $\bm{\Psi} = \mathrm{diag}(\psi_1,\ldots,\psi_Q)$. The EM algorithm uses a variational Gaussian approximation in the E-step and the Rubin-Thayer iterations \citep{Rubin1982} in the M-step. Their LNM-FA shares the factor-analytic motivation of the present work, which motivated our work targeting to structure a group-level random effect $\bm{\lambda}_j = \mathbf{B}\mathbf{f}_j + \bm{\epsilon}_j$ and adopting the spherical simplification $\mathbf{D} = \sigma^2\mathbf{I}_Q$. In parallel, \citet{mcgillycuddy2024parsimoniouslyfittinglargemultivariate} implemented a reduced-rank parameterization of large multivariate random effects within the general glmmTMB framework. Their work showed that factor-structured random effects are practically useful for grouped count data, not just a theoretical construct. However, their approach still operates at the observation level. It lacks the group-level hierarchical structure that is central to our work.
+
+\citet{Cui2026} studied a purely bi-linear factor structure without idiosyncratic-noise. They treated the factors $\mathbf{f}$ as fixed parameters and estimating them jointly by alternating block-coordinate maximum likelihood. Their asymptotic theory establishes a scaling condition under which factor-loading estimates are asymptotically normal, requiring both dimensions to diverge jointly. Different from their work, our target is grouped Multinomial data under the framework of PME, rather than item-level conditionally independent responses.
+
+\iffalse
 Relative to PLN-PCA, we add a group-level hierarchical structure, a spherical idiosyncratic term, and Laplace inference. Relative to LNM-FA, the principal advances are the group-level factor structure and the large-$Q$ consistency theory. Relative to DMR, we add group-level random effects with a factor prior, thus DMR can be recovered as the special case when $J = 1$.
-
+\fi
 
 
 
@@ -142,7 +150,7 @@ where $\|\mathbf{b}_{q}\|^{2}$ captures the structured factor component and $\si
 \end{remark}
 \fi
 
-
+\iffalse
 \section{EM Algorithm \& Relatives}
 \label{sec: em-algorithm-relatives}
 
@@ -168,4 +176,4 @@ the equality holds when $\theta=\theta^{'}$. Thus, we have a family of lower bou
     \label{eq:em-m-step}
 \end{equation}
 and then re-evaluates the lower bound at the new parameter value in E-step.
-
+\fi
