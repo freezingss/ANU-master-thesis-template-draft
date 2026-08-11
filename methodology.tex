@@ -183,6 +183,8 @@ Chapter~\ref{cha:methodology} derived a correct and convergent Laplace-EM algori
 \section{PME Auxiliary-Variable Construction \& Woodbury Solve}
 \label{sec:auxiliary-variable-construction}
 
+Indirect inference (II) is a methodology for estimating the parameters of an intractable (generative) model on the basis of an alternative parametric (auxiliary) model that is both analytically and computationally easier to deal with. \citet{Drovandi_2015} introduced the parametric Bayesian indirect inference (pBII) methods 
+
 For a fixed group $j$, we introduce an auxiliary scalar $\xi_{i}$ per observation $i\in \mathcal{I}_{j}$ and define the Poisson surrogate log-posterior
 \begin{equation}
     \ell_P(\boldsymbol{\lambda}, \boldsymbol{\xi}) \;=\; \sum_{i \in \mathcal{I}_j} \sum_{q=1}^{Q} \Big[ y_{iq}\, \eta_{iq}(\boldsymbol{\lambda}) - \exp\big(\eta_{iq}(\boldsymbol{\lambda}) + \xi_i\big) \Big] \;-\; \tfrac{1}{2} \boldsymbol{\lambda}^\top \boldsymbol{\Sigma}^{-1} \boldsymbol{\lambda},
@@ -520,6 +522,99 @@ Theorem~\ref{thm:convergence} guarantees that the Woodbury-accelerated iteration
 with $\mathbf{H}_{j}$ the Hessian of the true multinomial log-posterior $\ell$, not of the Poisson surrogate $\ell_{P}$. 
 
 Although $\hat{\mathbf{S}}_{j}$ costs $\mathcal{O}(Q^{3})$, we prefer using the exact value instead of Poisson surrogate (except the cases with super large Q) because the calculation of $\hat{\bm{\Sigma}}_{\text{obs}}$ and Rubin-Thayer update~\eqref{eq: Rubin3}-\eqref{eq: Rubin4} are dependent of it. Any error in the curvature propagates into the parameter estimates. Proposition~\ref{prop:diff-s} shows that the surrogate Poisson over-states curvature by a positive-semi-definite amount, so the surrogate Laplace covariance $\hat{\mathbf{S}}_{j}^{P}$ in \eqref{eq:covariance-relation} under-states the posterior variance.Through \eqref{eq:null-space-decomp} this bias falls hardest on the leftover directions that $\sigma^{2}$ alone controls, and it feeds a downward bias into $\sigma^{2}$ at the next M-step. Quantifying and removing this bias is the purpose of the ordering established next and of the hybrid strategy that follows.
+
+\section{Asymptotics Consistency}
+
+
+\subsection{Exact Decomposition of E-step Target}
+Denote the true parameters for our model by $\{\mathbf{B}^{*}, \sigma^{2*}\}$. Thus, $\bm{\Sigma}^{*}$ denotes the true variance of $\bm{\lambda}\sim \mathcal{N}(0, \bm{\Sigma}^{*})$. In what follows, we introduce several assumptions. Assumption~\ref{asm:eigenvalue-condition} imposes eigenvalue conditions on loadings. Assumption~\ref{asm2}
+\begin{assumption}
+    There exists a constant $D>0$ such that $\|\mathbf{B}^{*}\|\leq D$, $\sigma^{2*}\in [D^{-1}, D]$ and $\|\beta_{0}^{*}\|\leq D$. $D$ is independent on both $J$ and $Q$.
+    \label{asm:asm1}
+\end{assumption}
+
+\begin{assumption}
+    There exists a constant $c_{0}>0$ independent to $Q$ such that $\lambda_{\min}(\mathbf{B}^{*}\mathbf{B}^{*\top})\geq c_{0}Q$.
+    \label{asm:asm2}
+\end{assumption}
+
+\begin{assumption}
+    \label{asm:asm3}
+\end{assumption}
+
+We present the $l_{2}$ error bound as follows. 
+
+\begin{theorem}[Brascamp-Lieb]
+    For every realization of $\bm{y}$, $\operatorname{Var}(\bm{\lambda}|\bm{y})\preceq \bm{\Sigma}^{*}$.
+\end{theorem}
+
+\begin{proof}
+    Write $p(\bm{\lambda}|\bm{y})\propto \exp\{-V(\bm{\lambda})\}$ with $V(\bm{\lambda})=-\ell(\bm{\lambda})+\frac{1}{2}\bm{\lambda}^{\top}(\bm{\Sigma}^{*})^{-1}\bm{\lambda}$.
+\end{proof}
+
+The next result restates that the exact identity relating the Poisson surrogate curvature $\mathbf{H}^{P}$ actually computed by the E-step to the true multinomial curvature $\mathbf{H}^{M}$.
+
+\begin{proposition}[Exact target identity]
+    For every $\bm{\lambda}\in \mathbb{R}^{Q}$,
+    \begin{equation*}
+        \log p^{M}(\bm{\lambda}|\bm{y})=\log p^{P}(\bm{\lambda}|\bm{y})+r(\bm{\lambda})+c,
+    \end{equation*}
+    where $r(\bm{\lambda})=\Lambda(\bm{\lambda})-y_{ij\cdot}\log \Lambda(\bm{\lambda})$ and $c$ independent to $\bm{\lambda}$.
+\end{proposition}
+
+\begin{theorem}
+    Suppose that $\mathbf{H}^{P}=D(\bm{\lambda})+(\bm{\Sigma}^{*})^{-1}$ and $\mathbf{H}^{M}=\frac{y_{ij\cdot}}{\Lambda(\bm{\lambda})}D(\bm{\lambda})+\Lambda(\bm{\Sigma}^{*})^{-1}-\frac{y_{ij\cdot}}{\Lambda^{2}(\bm{\lambda})}\vartheta(\bm{\lambda})\vartheta(\bm{\lambda})^{\top}$ denote the negative Hessians of $\log p^{P}(\cdot|\bm{y})$ and $\log p^{M}(\cdot|\bm{y})$ respectively. For every $\bm{\lambda}\in \mathbf{R}^{Q}$,
+    \begin{equation*}
+        \mathbf{H}^{M}-\mathbf{H}^{P}=\left(\frac{y_{ij\cdot}}{\Lambda(\bm{\lambda})}-1\right)D(\bm{\lambda})-\frac{y_{ij\cdot}}{\Lambda^{2}(\bm{\lambda})}\vartheta(\bm{\lambda})\vartheta(\bm{\lambda})^{\top}.
+    \end{equation*}
+    In particular, at any point with $\Lambda(\bm{\lambda})=y_{ij\cdot}$, 
+    \begin{equation*}
+        \mathbf{H}^{M}-\mathbf{H}^{P}=-\frac{1}{\Lambda(\bm{\lambda})}\vartheta(\bm{\lambda})\vartheta(\bm{\lambda})^{\top}\preceq 0
+    \end{equation*}
+    hence,
+    \begin{equation*}
+        \mathbf{S}^{M}(\bm{\lambda})\succeq \mathbf{S}^{P}(\bm{\lambda}).
+    \end{equation*}
+\end{theorem}
+
+\begin{proof}
+    
+\end{proof}
+
+\subsection{Controlling Finite J}
+
+\begin{lemma}
+    Under Assumptions~\ref{asm:asm1}-\ref{asm:asm2}, there exists a constant $C_{1}$ such that $\mathbb{E}\|\bar{\bm{\Sigma}}_{j}\|_{\operatorname{op}}=\mathcal{O}(Q)$ and $\|\bm{\Sigma}^{*}\|_{\operatorname{op}}=\mathcal{O}(Q)$. Consequently, with probability at least $1-\eta$ for any fixed $\eta\in (0,1)$,
+    \begin{equation*}
+        \|\bar{\bm{\Sigma}}_{j}-\bm{\Sigma}^{*}\|_{\operatorname{op}}\leq \frac{C_{1}Q}{\eta}:=R.
+    \end{equation*}
+    \label{lem:envelope_bound}
+\end{lemma}
+
+\begin{proof}
+    
+\end{proof}
+
+\begin{theorem}
+    Under Assumptions~\ref{asm:asm1}-\ref{asm:asm2}, and conditional on the envolope $\|\bar{\bm{\Sigma}}_{j}-\bm{\Sigma}^{*}\|_{\operatorname{op}}\leq R=\mathcal{O}(Q)$ of Lemma~\ref{lem:envelope_bound} holding for all $j$ simultaneously,
+    \begin{equation*}
+        \|\bar{\bm{\Sigma}}_{j}-\bm{\Sigma}^{*}\|_{\operatorname{op}}=\mathcal{O}_{p}\left(Q\sqrt{\frac{\log Q}{J}}+\frac{Q\log Q}{J}\right).
+    \end{equation*}
+\end{theorem}
+
+\subsection{Asymmetry}
+
+By the triangle inequality, 
+\begin{equation}
+    \|\hat{\bm{\Sigma}}_{\operatorname{obs}}-\bm{\Sigma}^{*}\|_{\operatorname{op}}\leq \|\bar{\bm{\Sigma}}-\bm{\Sigma}^{*}\|+\|\hat{\bm{\Sigma}}_{\operatorname{obs}}-\bar{\bm{\Sigma}}\|_{\operatorname{op}}.
+\end{equation}
+
+\begin{theorem}
+    Suppose that $\|\hat{\bm{\Sigma}}_{\operatorname{obs}}-\bm{\Sigma}^{*}\|_{\operatorname{op}}=\mathcal{O}_{p}(\epsilon_{J,Q})$ for $\epsilon_{J,Q}=\mathcal{o}(Q)$. Let $\hat{\mathbf{U}}\in \mathbb{R}^{Q\times K}$ and $\mathbf{U}^{*}\in \mathbb{R}^{Q\times K}$ are the orthonormal bases for the top-K eigenspaces of $\hat{\bm{\Sigma}}_{\operatorname{obs}}$ and $\bm{\Sigma}^{*}$ respectively. Then,
+    \begin{equation*}
+        \|\sin \Theta\left(\hat{\mathbf{U}},\mathbf{U}^{*}\right)\|_{\operatorname{op}}=\mathcal{O}_{p}(\frac{\epsilon_{J,Q}}{Q}).
+    \end{equation*}
+\end{theorem}
 
 \section{Complexity Analysis}
 \label{sec:complexity-analysis}

@@ -8,6 +8,8 @@ In this chapter, we lay out numerical results illustrating the computational and
 
 Throughout Chapter~\ref{cha:computational-acceleration}, we focus on the high-dimensional EM algorithm in large-Q regime, which is illustrated in Algorithm~\ref{al:}. We empirically study two cases using our algorithm: large-J regime and large-Q regime motivated this thesis. Before comparing the consistency rates and efficient, we provide the statement proved by Figure~\ref{fig:} saying that the error between estimators given by base EM algorithm and Woodbury EM algorithm can be controlled near the machine error, which demonstrates that these two algorithms give the same estimation numerically.
 
+
+\iffalse
 Figure~\ref{fig:mode-equivalence} 
 
 \begin{figure}[H]
@@ -16,6 +18,7 @@ Figure~\ref{fig:mode-equivalence}
     \caption{Time Cost Comparison.}
     \label{fig:cost-vs-group-count}
 \end{figure}
+\fi
 
 The first result under large-J regime states that our Woodbury EM algorithm can reduce the cost of time when $J$ increasing, with large and fixed $Q$. Before the test on real-data, we do the simulation on generated dataset.   
 
