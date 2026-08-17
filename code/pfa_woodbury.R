@@ -1,12 +1,3 @@
-# =============================================================================
-# pfa_woodbury_armijo.R
-# =============================================================================
-
-
-# =============================================================================
-# 1. SHARED HELPERS  (identical to the dense file)
-# =============================================================================
-
 apply_PLT <- function(B) {
   K <- ncol(B)
   qr_obj <- qr(t(B[1:K, , drop = FALSE]))
@@ -19,10 +10,6 @@ apply_PLT <- function(B) {
 row_softmax <- function(eta) { mx <- apply(eta, 1, max); ee <- exp(eta - mx); ee / rowSums(ee) }
 row_logsumexp <- function(eta) { mx <- apply(eta, 1, max); mx + log(rowSums(exp(eta - mx))) }
 
-
-# =============================================================================
-# 2. E-STEP: Woodbury Laplace update for one group
-# =============================================================================
 
 laplace_lambda_j_wb2 <- function(Y_j, X_j, M_j, mu, phi, B, sigma2,
                                 BtB, M_K, M_K_inv, log_det_MK,
@@ -165,11 +152,6 @@ mstep_phi_wb <- function(Y, X, group, lambda_hat, mu, phi, lambda_phi = 0) {
   list(mu = mu_new, phi = phi_new)
 }
 
-
-# =============================================================================
-# 4. M-STEP (b): WOODBURY RUBIN-THAYER
-# =============================================================================
-
 rubin_thayer_wb <- function(Sigma_obs, K, B_init = NULL, sigma2_init = 0.3,
                             max_iter = 500, tol = 1e-10) {
   Q <- nrow(Sigma_obs)
@@ -206,11 +188,6 @@ rubin_thayer_wb <- function(Sigma_obs, K, B_init = NULL, sigma2_init = 0.3,
   list(B = B, sigma2 = sigma2)
 }
 
-
-# =============================================================================
-# 5. MAIN FITTER  (fully Woodbury-accelerated)
-# =============================================================================
-
 fit_pfa_woodbury <- function(Y, X, group, K,
                              M = rowSums(Y),
                              max_iter = 60, tol = 1e-4,
@@ -221,9 +198,6 @@ fit_pfa_woodbury <- function(Y, X, group, K,
   N <- nrow(Y); Q <- ncol(Y); P <- ncol(X); J <- max(group)
   stopifnot(all(X[, 1] == 1))
 
-  # ------------------------------------------------------------------
-  # Initialisation
-  # ------------------------------------------------------------------
   avg_prop <- colMeans(Y / pmax(rowSums(Y), 1))
   mu <- log(avg_prop + 1e-8); mu <- mu - mean(mu)
   phi <- matrix(0, P, Q)
@@ -248,22 +222,18 @@ fit_pfa_woodbury <- function(Y, X, group, K,
 
   for (em in 1:max_iter) {
 
-    # ---- E-step ----
     es <- estep_wb(J, group, Y, X, M, mu, phi, B, sigma2,
                           max_iter = estep_max_iter, gtol = estep_gtol, exact_Shat = exact_Shat)
     lambda_hat <- es$lambda_hat
     S_hat <- es$S_hat
 
-    # ---- Laplace log-evidence monitor ----
     log_ev[em] <- es$lp_total - 0.5 * J * es$log_det_Sigma +
       0.5 * es$ld_S_total
 
-    # ---- M-step (a): fixed effects ----
     mp <- mstep_phi_wb(Y, X, group, lambda_hat, mu, phi,
                         lambda_phi = lambda_phi)
     mu <- mp$mu; phi <- mp$phi
 
-    # ---- M-step (b): factor loadings ----
     S_obs <- tcrossprod(lambda_hat) / J
     for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
     rt <- rubin_thayer_wb(S_obs, K, B_init = B, sigma2_init = sigma2)

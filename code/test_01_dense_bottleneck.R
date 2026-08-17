@@ -1,19 +1,9 @@
-# =============================================================================
-# test_01_dense_bottleneck.R
-# =============================================================================
-
-source("pfa_base_dense_armijo.R")
-source("sim_data.R")
-
 set.seed(2026)
 
 Qs <- c(50, 100, 200, 400)  
 K <- 2
 n_rep <- 200                 
 
-cat("=============================================================\n")
-cat(" (1) Dense Newton solve  solve(H, g) - one E-step iteration\n")
-cat("=============================================================\n")
 cat(sprintf("%8s %14s %14s\n", "Q", "ms/solve", "vs Q=50"))
 
 t_solve <- numeric(length(Qs))
@@ -47,9 +37,6 @@ cat(sprintf("\nEmpirical growth exponent (dense solve): Q^%.2f",
             coef(fit1)[2]))
 cat("  [BLAS-optimised; asymptotically 3]\n\n")
 
-cat("=============================================================\n")
-cat(" (2) Dense Rubin-Thayer -- one inner iteration (solve(Sigma))\n")
-cat("=============================================================\n")
 cat(sprintf("%8s %14s %14s\n", "Q", "ms/iter", "vs Q=50"))
 
 t_rt <- numeric(length(Qs))
@@ -77,18 +64,9 @@ fit2 <- lm(log(t_rt) ~ log(Qs))
 cat(sprintf("\nEmpirical growth exponent (dense Rubin-Thayer): Q^%.2f\n",
             coef(fit2)[2]))
 
-cat("\n=============================================================\n")
-cat(" (3) What a full dense EM iteration implies at large Q\n")
-cat("=============================================================\n")
-cat("Per EM iteration the dense algorithm pays roughly\n")
-cat("   J groups x ~10 Newton steps x t_solve(Q)   [E-step]\n")
-cat(" + ~500 RT inner iterations x t_rt(Q)          [M-step (b)]\n")
 J_ref <- 30
 for (qi in seq_along(Qs)) {
   est <- (J_ref * 10 * t_solve[qi] + 500 * t_rt[qi]) / 1000
   cat(sprintf("   Q = %4d :  ~%7.1f s / EM iteration (J = %d)\n",
               Qs[qi], est, J_ref))
 }
-cat("Extrapolating the measured exponents to Q = 1000 gives ~8 min per EM\n")
-cat("iteration, i.e. hours per fit -- the high-dimensional dilemma that\n")
-cat("motivates pfa_woodbury.R (see test_02 for the accelerated numbers).\n")

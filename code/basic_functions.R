@@ -8,16 +8,6 @@ subspace_dist <- function(B1, B2) {
 
 # Build Long Dataframe 
 build_long <- function(Y, X, group) {
-  N <- nrow(Y); Q <- ncol(Y)
-  data.frame(
-    count = as.vector(Y),                        
-    category = factor(rep(seq_len(Q), each  = N)),
-    group = factor(rep(group, times = Q)),
-    log_total = log(pmax(rep(rowSums(Y), times = Q), 1))
-  )
-}
-
-build_long <- function(Y, X, group) {
   N <- nrow(Y); Q <- ncol(Y); P <- ncol(X)
   long <- data.frame(
     count    = as.vector(Y),                                

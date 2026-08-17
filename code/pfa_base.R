@@ -1,7 +1,7 @@
 library(glmmTMB)
 library(bench)
-library(nnet) # multinomial
-library(psych) # fa package
+library(nnet)
+library(psych)
 library(Matrix)
 
 # glmmTMB reference fit (without idiosyncratic variance)

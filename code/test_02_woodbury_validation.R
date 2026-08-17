@@ -1,9 +1,5 @@
-# =============================================================================
-# test_02_woodbury_validation.R
-# =============================================================================
-
-source("pfa_base_dense_armijo.R")
-source("pfa_woodbury_armijo.R") 
+source("pfa_base.R")
+source("pfa_woodbury.R") 
 source("sim_data.R")
 
 set.seed(3)
@@ -26,17 +22,11 @@ check <- function(name, err, tol = tolm) {
               ifelse(err < tol, "PASS", "FAIL"), err))
 }
 
-cat("=============================================================\n")
-cat(" (a)-(c) Woodbury linear algebra exactness\n")
-cat("=============================================================\n")
-
-# (a) Sigma^{-1} v
 v <- rnorm(Q)
 wb_Sv  <- v / s2 - B %*% (M_K_inv %*% (t(B) %*% v)) / s2^2
 check("(a) Sigma^{-1} v : Woodbury vs dense solve",
       max(abs(wb_Sv - solve(Sigma, v))))
 
-# (b) DLR surrogate Newton direction
 fixed <- matrix(rep(mu, each = Nj), Nj, Q) + X_j %*% phi
 lambda <- rnorm(Q, 0, 0.3)
 eta <- sweep(fixed, 2, lambda, "+")
@@ -52,22 +42,13 @@ wb_dir <- idt * g - idt * (B %*% backsolve(L, forwardsolve(t(L),
                                                            -crossprod(B, idt * g))))
 check("(b) A^{-1} g : Woodbury vs dense solve", max(abs(wb_dir - solve(A, g))))
 
-# (c) Level-2 beta identity
 check("(c) Sigma^{-1} B == (1/sigma2) B M_K^{-1}",
       max(abs(solve(Sigma, B) - B %*% M_K_inv / s2)))
 
-# (d) Level-3 analytic log-determinant
-cat("=============================================================\n")
-cat(" (d) Level-3 analytic log|S_hat|\n")
-cat("=============================================================\n")
 ld_analytic <- -(sum(log(dt)) - 2 * K * log(s2) - ldMK + 2 * sum(log(diag(L))))
 ld_dense <- -as.numeric(determinant(A, logarithm = TRUE)$modulus)
 check("(d) log|S_hat| : analytic (O(K^3)) vs dense (O(Q^3))",
       abs(ld_analytic - ld_dense))
-
-cat("=============================================================\n")
-cat(" (e) Stopping-rule defect and identical modes\n")
-cat("=============================================================\n")
 
 Sigma_inv <- solve(Sigma)
 r_dense <- laplace_lambda_j_dense(Y_j, X_j, M_j, mu, phi, Sigma_inv,
@@ -111,9 +92,6 @@ cat(sprintf("  cor(lambda_dense, lambda_wb) = %.6f   max|diff| = %.2e\n",
 check("(e) identical posterior modes (dense vs Woodbury)",
       max(abs(r_dense$lambda_hat - r_wb$lambda_hat)), tol = 1e-3)
 
-cat("=============================================================\n")
-cat(" (f) Per-Newton-step microbenchmark (this machine)\n")
-cat("=============================================================\n")
 cat(sprintf("%6s %12s %12s %10s %12s\n",
             "Q", "dense(ms)", "wb(ms)", "speedup", "lp()(ms)"))
 for (Qb in c(50, 100, 200, 400)) {
@@ -140,31 +118,21 @@ for (Qb in c(50, 100, 200, 400)) {
     sum(db$Y * e) - sum(db$M * row_logsumexp(e)) }
   a0 <- rnorm(Qb, 0, 0.1)
   t_l <- system.time(for (r in 1:nb) z <- lpf(a0))["elapsed"] / nb * 1e3
-  t_w <- max(t_w, 1e-3)            # floor at clock resolution for the ratio
+  t_w <- max(t_w, 1e-3)          
   cat(sprintf("%6d %12.3f %12.3f %9.1fx %12.3f\n", Qb, t_d, t_w, t_d / t_w, t_l))
 }
-cat("Note: the lp() column is the cost of ONE backtracking evaluation.  A\n")
-cat("Newton step performs ~1-5 of them in BOTH methods, so in interpreted R\n")
-cat("lp() becomes the dominant per-step cost once the Woodbury solve has\n")
-cat("collapsed to ~0.05 ms; the full O(Q^3 -> QK^2) gain appears when lp()\n")
-cat("is also compiled (C++/Julia).  Full-scale numbers in the file header.\n\n")
 
-cat("=============================================================\n")
-cat(" (g) Full-EM smoke test: dense vs Woodbury (surrogate & exact S_hat)\n")
-cat("=============================================================\n")
 dat2 <- simulate_pfa_data(Q = 30, K = 2, J = 20, N_per_group = 12, seed = 7)
 
 t_fd <- system.time(
   f_d <- fit_pfa_dense(dat2$Y, dat2$X, dat2$group, K = 2, M = dat2$M,
                        max_iter = 15, verbose = FALSE))["elapsed"]
 
-# Woodbury with the surrogate (Poisson) S_hat -- production / fast path
 t_fw_s <- system.time(
   f_w_s <- fit_pfa_woodbury(dat2$Y, dat2$X, dat2$group, K = 2, M = dat2$M,
                             max_iter = 15, verbose = FALSE,
                             exact_Shat = FALSE))["elapsed"]
 
-# Woodbury with the exact multinomial S_hat -- should match dense
 t_fw_e <- system.time(
   f_w_e <- fit_pfa_woodbury(dat2$Y, dat2$X, dat2$group, K = 2, M = dat2$M,
                             max_iter = 15, verbose = FALSE,
@@ -200,6 +168,3 @@ cat(sprintf("  |log_ev  dense - wb-surr| = %.4f    (nonzero: surrogate S_hat bia
             abs(tail(f_d$log_evidence, 1) - tail(f_w_s$log_evidence, 1))))
 cat(sprintf("  |sigma2  dense - wb-exact| = %.4f   (~0 expected)\n",
             abs(f_d$sigma2 - f_w_e$sigma2)))
-cat("  (wb-surrogate uses the Poisson S_hat, which under-states posterior\n")
-cat("   variance -- Prop 5.4.1; wb-exact uses the true multinomial S_hat and\n")
-cat("   should track dense to numerical tolerance.)\n")
