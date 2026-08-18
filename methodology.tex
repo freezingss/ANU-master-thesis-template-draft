@@ -10,6 +10,7 @@ The observed-data log-likelihood under the model of Chapter~\ref{cha:model-speci
 
 where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. The integral in \eqref{eq:log-lik-chap2} has no closed form, because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM. The standard approach in generalized linear mixed models is the Laplace approximation (\citep{Breslow_1993}, \citep{Tierney01031986}), which replaced the integral with a Gaussian approximation at the posterior mode.
 
+\iffalse
 \section{The Choice of Approximation Level}
 \label{sec:the-choice-of-approximation-level}
 
@@ -19,7 +20,7 @@ A natural approach motivated by \citet{chiquet2018variational} and their PLN-PCA
 
 \paragraph*{Posterior Second-Moment Deflation} The factor-space Laplace posterior yields a second-moment matrix $\mathbf{W}_{f}=J^{-1}\sum_{j}(\hat{\mathbf{f}}_{j}\hat{\mathbf{f}}_{j}^{\top}+\hat{\mathbf{V}}_{j})$ that systematically underestimates $\mathbf{I}_{K}$ due to Laplace shrinkage. Because the M-step for $\mathbf{B}$ receives only $\mathbf{BW}_{f}\mathbf{B}^{\top}$ as its sufficient statistic for $\bm{\Sigma}$, the Rubin–Thayer algorithm (\citet{Rubin1982}) compensates by inflating $\hat{\mathbf{B}}$, leading to the error in estimation. 
 Thus, instead of approximate the posterior of $K$ dimensional latent factors, we do the approximation on Q dimensional group random effect $p(\bm{\lambda}_{j}\mid \bm{y}_{ij})$ directly and move the factor decomposition from the E-step to the M-step. The E-step treats $\bm{\lambda}_{j}$ as an unknown Q-vector with Gaussian prior $\mathcal{N}(\bm{0},\bm{\Sigma})$, then the M-step decomposes the resulting estimated covariance $\hat{\bm{\Sigma}}_{\text{obs}}$ into $\mathbf{BB}^{\top}+\sigma^{2}\mathbf{I}$.
-
+\fi
 \iffalse
 
 Before we lay out our detailed EM algorithm, we introduce three technical conditions, which will significantly simplify our presentation. Different from single scalar space, our parameter space $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ given by~\eqref{eq:log-lik-chap2} contains both scalar, vector and matrix.
@@ -170,7 +171,7 @@ Given $\hat{\bm{\Sigma}}_{\text{obs}}$, we decompose $\bm{\Sigma}=\mathbf{BB}^{\
 \label{eq: Rubin4}
 \end{equation}
 
-The iterations  \eqref{eq: Rubin1}-\eqref{eq: Rubin4} are repeated to convergence. The PLT constraint \eqref{eq: PLT} is enforced post-hoc via a QR decomposition of the top K rows of $\hat{\mathbf{B}}_{\text{new}}$, followed by sign correction to ensure positive diagonal entries and zeroing of the upper triangle. Applying PLT only after the Rubin–Thayer sub-iterations converge, rather than at each inner step, avoids the discontinuities that would otherwise disrupt convergence.
+The iterations  \eqref{eq: Rubin1}-\eqref{eq: Rubin4} are repeated to convergence. The PLT constraint is enforced post-hoc via a QR decomposition of the top K rows of $\hat{\mathbf{B}}_{\text{new}}$, followed by sign correction to ensure positive diagonal entries and zeroing of the upper triangle. Applying PLT only after the Rubin–Thayer sub-iterations converge, rather than at each inner step, avoids the discontinuities that would otherwise disrupt convergence.
     Given $\hat{\mathbf{B}}$ and $\hat{\sigma}^2$, the factor scores are recovered by the Bayes linear estimator \citep{Gelman2013}:
 \begin{equation}
 \hat{\mathbf{f}}_j = \left( \mathbf{I}_K + \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\mathbf{B}} \right)^{-1} \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\boldsymbol{\lambda}}_j ,
@@ -189,7 +190,7 @@ For a fixed group $j$, we introduce an auxiliary scalar $\xi_{i}$ per observatio
 \begin{equation}
     \ell_P(\boldsymbol{\lambda}, \boldsymbol{\xi}) \;=\; \sum_{i \in \mathcal{I}_j} \sum_{q=1}^{Q} \Big[ y_{iq}\, \eta_{iq}(\boldsymbol{\lambda}) - \exp\big(\eta_{iq}(\boldsymbol{\lambda}) + \xi_i\big) \Big] \;-\; \tfrac{1}{2} \boldsymbol{\lambda}^\top \boldsymbol{\Sigma}^{-1} \boldsymbol{\lambda},
 \end{equation}
-which treats the counts as independent Poisson draws with rate $\exp{(\eta_{iq}+\xi_{i})}$ rather than as a multinomial draw. This is the same auxiliary-variable idea that underlies Proposition~\ref{prop:PME}, but it is now applied to the E-step posterior instead of M-step likelihood.
+which treats the counts as independent Poisson draws with rate $\exp{(\eta_{iq}+\xi_{i})}$ rather than as a multinomial draw. This is the same auxiliary-variable idea, but it is now applied to the E-step posterior instead of M-step likelihood.
 
 With $\bm{\xi}$ fixed at $\bm{\xi}^{*}(\bm{\lambda})$, we denote $d_{q}:=\sum_{i\in \mathcal{I}_{j}}\exp{\bigl(\eta_{iq}(\bm{\lambda})+\xi_{i}\bigr)}$. The Hessian of $\ell_{P}(\cdot, \bm{\xi})$ with respect to $\bm{\lambda}$ is 
 \begin{equation}
@@ -523,98 +524,141 @@ with $\mathbf{H}_{j}$ the Hessian of the true multinomial log-posterior $\ell$, 
 
 Although $\hat{\mathbf{S}}_{j}$ costs $\mathcal{O}(Q^{3})$, we prefer using the exact value instead of Poisson surrogate (except the cases with super large Q) because the calculation of $\hat{\bm{\Sigma}}_{\text{obs}}$ and Rubin-Thayer update~\eqref{eq: Rubin3}-\eqref{eq: Rubin4} are dependent of it. Any error in the curvature propagates into the parameter estimates. Proposition~\ref{prop:diff-s} shows that the surrogate Poisson over-states curvature by a positive-semi-definite amount, so the surrogate Laplace covariance $\hat{\mathbf{S}}_{j}^{P}$ in \eqref{eq:covariance-relation} under-states the posterior variance.Through \eqref{eq:null-space-decomp} this bias falls hardest on the leftover directions that $\sigma^{2}$ alone controls, and it feeds a downward bias into $\sigma^{2}$ at the next M-step. Quantifying and removing this bias is the purpose of the ordering established next and of the hybrid strategy that follows.
 
-\section{Asymptotics Consistency}
+\section{Consistency \& Asymptotics}
 
+In this section, we adopt the processes established by \citet{Cui2026} and write the proof of analytic results based on the converged estimation $\hat{\bm{\theta}}_{n}:=\arg\max_{\bm{\theta}}\sum_{j}\ell_{\text{obs}}(\bm{\theta}, \bm{y}_{j})$, where $\ell_{\text{obs}}(\bm{\theta}, \bm{y}_{j}):=\log p(\bm{y}_{j}, \bm{\theta})$ denotes the marginal log-likelihood of group $j$.
 
-\subsection{Exact Decomposition of E-step Target}
-Denote the true parameters for our model by $\{\mathbf{B}^{*}, \sigma^{2*}\}$. Thus, $\bm{\Sigma}^{*}$ denotes the true variance of $\bm{\lambda}\sim \mathcal{N}(0, \bm{\Sigma}^{*})$. In what follows, we introduce several assumptions. Assumption~\ref{asm:eigenvalue-condition} imposes eigenvalue conditions on loadings. Assumption~\ref{asm2}
-\begin{assumption}
-    There exists a constant $D>0$ such that $\|\mathbf{B}^{*}\|\leq D$, $\sigma^{2*}\in [D^{-1}, D]$ and $\|\beta_{0}^{*}\|\leq D$. $D$ is independent on both $J$ and $Q$.
-    \label{asm:asm1}
-\end{assumption}
+\subsection{Consistency}
 
-\begin{assumption}
-    There exists a constant $c_{0}>0$ independent to $Q$ such that $\lambda_{\min}(\mathbf{B}^{*}\mathbf{B}^{*\top})\geq c_{0}Q$.
-    \label{asm:asm2}
-\end{assumption}
+Let $\bar{\ell}(\bm{\theta}):=\mathbb{E}_{\theta^{*}}[\ell_{\text{obs}}(\bm{\theta},\bm{y})]$ and $\bar{I}(\bm{\theta}^{*}):=-\nabla^{2}\bar{\ell}(\bm{\theta}^{*})$ denote the population Fisher information. According to the Wald consistency process, there are three steps for the proof of consistency.
 
-\begin{assumption}
-    \label{asm:asm3}
-\end{assumption}
-
-We present the $l_{2}$ error bound as follows. 
-
-\begin{theorem}[Brascamp-Lieb]
-    For every realization of $\bm{y}$, $\operatorname{Var}(\bm{\lambda}|\bm{y})\preceq \bm{\Sigma}^{*}$.
-\end{theorem}
-
-\begin{proof}
-    Write $p(\bm{\lambda}|\bm{y})\propto \exp\{-V(\bm{\lambda})\}$ with $V(\bm{\lambda})=-\ell(\bm{\lambda})+\frac{1}{2}\bm{\lambda}^{\top}(\bm{\Sigma}^{*})^{-1}\bm{\lambda}$.
-\end{proof}
-
-The next result restates that the exact identity relating the Poisson surrogate curvature $\mathbf{H}^{P}$ actually computed by the E-step to the true multinomial curvature $\mathbf{H}^{M}$.
-
-\begin{proposition}[Exact target identity]
-    For every $\bm{\lambda}\in \mathbb{R}^{Q}$,
-    \begin{equation*}
-        \log p^{M}(\bm{\lambda}|\bm{y})=\log p^{P}(\bm{\lambda}|\bm{y})+r(\bm{\lambda})+c,
-    \end{equation*}
-    where $r(\bm{\lambda})=\Lambda(\bm{\lambda})-y_{ij\cdot}\log \Lambda(\bm{\lambda})$ and $c$ independent to $\bm{\lambda}$.
-\end{proposition}
-
-\begin{theorem}
-    Suppose that $\mathbf{H}^{P}=D(\bm{\lambda})+(\bm{\Sigma}^{*})^{-1}$ and $\mathbf{H}^{M}=\frac{y_{ij\cdot}}{\Lambda(\bm{\lambda})}D(\bm{\lambda})+\Lambda(\bm{\Sigma}^{*})^{-1}-\frac{y_{ij\cdot}}{\Lambda^{2}(\bm{\lambda})}\vartheta(\bm{\lambda})\vartheta(\bm{\lambda})^{\top}$ denote the negative Hessians of $\log p^{P}(\cdot|\bm{y})$ and $\log p^{M}(\cdot|\bm{y})$ respectively. For every $\bm{\lambda}\in \mathbf{R}^{Q}$,
-    \begin{equation*}
-        \mathbf{H}^{M}-\mathbf{H}^{P}=\left(\frac{y_{ij\cdot}}{\Lambda(\bm{\lambda})}-1\right)D(\bm{\lambda})-\frac{y_{ij\cdot}}{\Lambda^{2}(\bm{\lambda})}\vartheta(\bm{\lambda})\vartheta(\bm{\lambda})^{\top}.
-    \end{equation*}
-    In particular, at any point with $\Lambda(\bm{\lambda})=y_{ij\cdot}$, 
-    \begin{equation*}
-        \mathbf{H}^{M}-\mathbf{H}^{P}=-\frac{1}{\Lambda(\bm{\lambda})}\vartheta(\bm{\lambda})\vartheta(\bm{\lambda})^{\top}\preceq 0
-    \end{equation*}
-    hence,
-    \begin{equation*}
-        \mathbf{S}^{M}(\bm{\lambda})\succeq \mathbf{S}^{P}(\bm{\lambda}).
-    \end{equation*}
-\end{theorem}
-
-\begin{proof}
-    
-\end{proof}
-
-\subsection{Controlling Finite J}
+\subsubsection{Identification}
 
 \begin{lemma}
-    Under Assumptions~\ref{asm:asm1}-\ref{asm:asm2}, there exists a constant $C_{1}$ such that $\mathbb{E}\|\bar{\bm{\Sigma}}_{j}\|_{\operatorname{op}}=\mathcal{O}(Q)$ and $\|\bm{\Sigma}^{*}\|_{\operatorname{op}}=\mathcal{O}(Q)$. Consequently, with probability at least $1-\eta$ for any fixed $\eta\in (0,1)$,
-    \begin{equation*}
-        \|\bar{\bm{\Sigma}}_{j}-\bm{\Sigma}^{*}\|_{\operatorname{op}}\leq \frac{C_{1}Q}{\eta}:=R.
-    \end{equation*}
-    \label{lem:envelope_bound}
+    For any $\bm{\theta}$, $\bar{\ell}(\bm{\theta})\leq \bar{\ell(\bm{\theta^{*}})}$ with equality if and only if the ratio $\dfrac{p(\bm{y},\bm{\theta})}{p(\bm{y},\bm{\theta}^{*})}$ is a.s  constant.
+    \label{lem:identification1}
 \end{lemma}
 
 \begin{proof}
-    
+    For any $\bm{\theta}$, we apply Jensen's inequality to the strictly convex function,
+    \begin{align*}
+        \bar{\ell}(\bm{\theta})-\bar{\ell}(\bm{\theta}^{*})&=\mathbb{E}_{\bm{\theta}^{*}}\left[\log \dfrac{p(\bm{y},\bm{\theta})}{p(\bm{y},\bm{\theta}^{*})}\right]\\
+        &\leq \log \mathbb{E}_{\bm{\theta}^{*}}\left[ \dfrac{p(\bm{y},\bm{\theta})}{p(\bm{y},\bm{\theta}^{*})}\right]\\
+        &=\log \int \dfrac{p(\bm{y},\bm{\theta})}{p(\bm{y},\bm{\theta}^{*})}p(\bm{y},\bm{\theta}^{*})\,d\bm{y}=\log \int p(\bm{y},\bm{\theta})\,d\bm{y}=0.
+    \end{align*}
+\end{proof}
+
+In simple case with regularity conditions, the function $\theta \mapsto P^{\theta}_{y}$ is an injection in Lemma~\ref{lem:identification1}, establishing consistency of $\bm{\theta}$. However, our FA-DMR model suffers from rotational and signed indeterminacy, thus consistency cannot be concluded here. Instead of structuring the global injection, we use local curvature as the surrogate of global injection.
+
+\begin{lemma}
+    Suppose the twice differentiation for $\bar{\ell}$ holds, then $\nabla_{\bm{\theta}}\bar{\ell}(\bm{\theta}^{*})=0$ and $\nabla_{\bm{\theta}}^{\top}\nabla_{\bm{\theta}}\bar{\ell}(\bm{\theta}^{*})=-\bar{I}(\bm{\theta}^{*})$.
+    \label{lem:identification2}
+\end{lemma}
+
+\begin{proof}
+    With regularity conditions hold, we can exchange the calculation $\mathbb{E}_{\bm{\theta}^{*}}[\cdot]$ and $\nabla_{\bm{\theta}}(\cdot)$.
+\end{proof}
+
+\begin{theorem}[Local Identification]
+    Suppose $\bar{\ell}$ is twice continuously differentiable in a neighborhood of $\bm{\theta}$, denoted $\Theta$ (the PLT-constrained parameter space) and $\bar{I}(\bm{\theta}^{*})\succ 0$. Then there is a neighborhood $U$ of $\bm{\theta}^{*}$ such that $\bm{\theta}^{*}$ is the unique maximizer of $\bar{\ell}$ in neighborhood $U$. That is, any $\bm{\theta}\in U\setminus \{\bm{\theta}^{*} \}$, either $\bar{\ell}(\bm{\theta})<\bar{\ell}(\bm{\theta}^{*})$ or no such $\bm{\theta}$ with $\bar{\ell}(\bm{\theta})=\bar{\ell}(\bm{\theta}^{*})$ exists in $U\setminus \{\bm{\theta}^{*}\}$ at all.
+\end{theorem}
+
+\begin{proof}
+    By Lemma~\ref{lem:identification1}, $\bar{\ell}(\bm{\theta})\leq \bar{\ell(\bm{\theta^{*}})}$ everywhere, so it suffices to rule out a sequence $\bm{\theta}_{n}\to \bm{\theta}^{*}$, $\bm{\theta}_{n}\neq \bm{\theta}^{*}$, with $\bar{\ell}(\bm{\theta})= \bar{\ell(\bm{\theta^{*}})}$ for every $n$. Suppose toward a contradiction such a sequence exists. By Lemma~\ref{lem:identification2} and Taylor expansion with Peano error, we have,
+    \begin{equation*}
+        0=\bar{\ell}(\bm{\theta}_{n})-\bar{\ell}(\bm{\theta}^{*})=-\dfrac{\left(\bm{\theta}_{n}-\bm{\theta}^{*}\right)^{\top}\bar{I}(\bm{\theta}^{*})\left(\bm{\theta}_{n}-\bm{\theta}^{*}\right)}{2}+o\left(\|\bm{\theta}_{n}-\bm{\theta}^{*}\|^{2}\right)
+    \end{equation*}
+    Divided by $\|\bm{\theta}_{n}-\bm{\theta}^{*}\|^{2}>0$ and write the unit vector  $\bm{u}_{n}:=\left(\bm{\theta}_{n}-\bm{\theta}^{*}\right)/\|\bm{\theta}_{n}-\bm{\theta}^{*}\|$. Thus,
+    \begin{equation*}
+        0=-\dfrac{1}{2}\bm{u}_{n}^{\top}\bar{I}(\bm{\theta}^{*})\bm{u}_{n}+o(1).
+    \end{equation*}
+    Since $\{\bm{u}_{n}\}$ lies on the compact unit sphere, a subsequence converges to the unit vector $\bm{u}$ passing to the limit along that subsequence, thus $\bm{u}_{n}^{\top}\bar{I}(\bm{\theta}^{*})\bm{u}_{n}=0$. However, $\bar{I}(\bm{\theta}^{*})\succ 0$, which implies that $\bm{u}_{n}^{\top}\bar{I}(\bm{\theta}^{*})\bm{u}_{n}>0$ for any unit vector $\bm{u}$ and leads to a contradiction. Hence no such sequence exists. 
+\end{proof}
+
+\iffalse
+\subsubsection{Uniform Convergence}
+
+After proof of identification, the target is uniform convergence 
+\begin{equation}
+    \sup_{\bm{\theta}\in \Theta}|\ell_{n}\left(\bm{\theta}\right)-\bar{\ell}\left(\bm{\theta}\right)|\to 0,
+\end{equation}
+in probability by Lipschitz-envelope Glivenko-Cantelli method. We separate the work into two parts: the pointwise LLN and uniformly Lipschitz envelope.
+
+\begin{lemma}
+    For any $\bm{\theta}\in \Theta$ and any data point $\bm{y}$ in the finite support of a single group's data, we have $\ell_{\text{obs}}\left(\bm{\theta},\bm{y}\right)\in \left[L\left(\bm{y}\right), U\left(\bm{y}\right)\right]$ for finite, $\bm{\theta}$-independent bounds $L$ and $U$. Consequently, $\bar{\ell}(\bm{\theta})=\mathbb{E}_{\bm{\theta}^{*}}[\ell_{\text{obs}}(\bm{\theta},\bm{y})]$ is finite for any $\bm{\theta}$.
+    \label{lem:uniconverge1}
+\end{lemma}
+
+\begin{proposition}[Pointwise LLN]
+    For any fixed $\bm{\theta}$, $\ell_{n}\left(\bm{\theta}\right)\to \bar{\ell}\left(\bm{\theta}\right)$ almost surely as $J\to \infty$.
+    \label{prop:uniconverge2}
+\end{proposition}
+
+\begin{proof}
+    Since the group effect $\bm{\lambda}_{j}\sim \mathcal{N}\left(0,\bm{\Sigma}(\bm{\theta}^{*})\right)$ are independent and $\bm{y}_{j}\mid \bm{\lambda}_{j}$ conditionally independent of other groups, $\{\ell_{\text{obs}}\}_{j=1}^{J}$ are independent and identically distributed across group $j$. With finite mean $\bar{\ell}\left(\bm{\theta}\right)$ by Lemma~\ref{lem:uniconverge1}, we apply the strong law of large numbers directly, that is,
+    \begin{equation*}
+        \ell_{n}\left(\bm{\theta}\right)=\dfrac{1}{J}\sum_{j=1}^{J} \ell_{\text{obs}, j}\left(\bm{\theta}\right)\to \mathbb{E}_{\bm{\theta}^{*}}[\ell_{\text{obs}}(\bm{\theta})]=\bar{\ell}\left(\bm{\theta}\right),
+    \end{equation*}
+    almost surely.
+\end{proof}
+
+Proposition~\ref{prop:uniconverge2} requires both the regularity conditions and $J\to\infty$, which is not the same regime as we discussed before. Although our model has two levels and 3 indexes (I observations, J groups and Q categories), only group-level parameters determine the properties based on group effect $\bm{\lambda}_{j}$. We call this as sparse multinomial regime in some applications, for example, the forensic DNA profiling.
+
+\begin{lemma}[Lipschitz Envelope]
+    For any $\bm{\theta}$ and $\bm{\theta}^{'}$ in compact, convex and PLT-constrained space $\Theta$, we have,
+    \begin{equation*}
+        |\ell_{\text{obs}}\left(\bm{\theta},\bm{y}\right)-\ell_{\text{obs}}\left(\bm{\theta}^{'},\bm{y}\right)|\leq L(\bm{y}_{j})\|\bm{\theta}-\bm{\theta}^{'}\|,
+    \end{equation*}
+    where the Lipschitz constant is,
+    \begin{equation*}
+        L(\bm{y}_{j}):=\sup_{\bm{\theta}\in \Theta}\|\nabla_{\bm{\theta}}\ell_{\text{obs}}\left(\bm{\theta},\bm{y}_{j}\right)\|.
+    \end{equation*}
+    Using Lemma and the Cauthy-Schwarz bound,
+    \begin{equation*}
+        L(\bm{y}_{j})\leq \sup_{\bm{\theta}\in \Theta}\left\{c(\bm{\theta})\left(C_{Q}(\bm{\theta})\dfrac{Q}{m}+\|\hat{\bm{\lambda}}(\bm{\theta},\bm{y}_{j})\|^{2}\right)+c^{'}(\bm{\theta})\right\}
+    \end{equation*}
+    for continuous and $\Theta$-bounded functions $c$, $c^{'}$ of $\bm{\theta}$.
+\end{lemma}
+
+\begin{proposition}
+    $\mathbb{E}_{\bm{\theta}^{*}}[L(\bm{y})]<\infty$.
+\end{proposition}
+
+\begin{theorem}
+    For fixed $Q$,
+    \begin{equation*}
+        \sup_{\bm{\theta}\in \Theta}|\ell_{n}(\bm{\theta})-\bar{\ell}(\bm{\theta})|\to 0
+    \end{equation*}
+    in probability as $J\to \infty$.
+    \label{thm:uniconverge}
+\end{theorem}
+
+Throughout, $\Theta\in U$ is a compact, convex neighborhood of $\bm{\theta}^{*}$ contained in the neighborhood $U$. 
+
+\subsection{Asymptotic Normality}
+
+\begin{lemma}
+    For any $\epsilon>0$ with an nonempty set $K_{\epsilon}:=\left\{\bm{\theta}\in \Theta: \|\bm{\theta}-\bm{\theta}^{*}\|\geq \epsilon\right\}$, 
+    \begin{equation*}
+        \sup_{\bm{\theta}\in K_{\epsilon}}\bar{\ell}(\bm{\theta})<\bar{\ell}(\bm{\theta}^{*}).
+    \end{equation*}
+\end{lemma}
+
+\begin{proof}
+    As we defined, $K_{\epsilon}$ is a closed subset of the compact set $\Theta$, so $K_{\epsilon}$ is compact. The continuous function $\bar{\ell}$ achieves its maximum on $K_{\epsilon}$ at some $\bm{\theta}_{\epsilon}\in K_{\epsilon}$. Since $\|\bm{\theta}_{\epsilon}-\bm{\theta}^{*}\|\geq \epsilon>0$, $\bm{\theta}_{\epsilon}\neq \bm{\theta}^{*}$ and $\bm{\theta^{*}}$ being the unique maximizer of $\bar{\ell}$ on $K_{\epsilon}\subseteq \Theta$, we conclude that $\bar{\ell}(\bm{\theta}_{\epsilon})<\bar{\ell}(\bm{\theta}^{*})$ strictly.
 \end{proof}
 
 \begin{theorem}
-    Under Assumptions~\ref{asm:asm1}-\ref{asm:asm2}, and conditional on the envolope $\|\bar{\bm{\Sigma}}_{j}-\bm{\Sigma}^{*}\|_{\operatorname{op}}\leq R=\mathcal{O}(Q)$ of Lemma~\ref{lem:envelope_bound} holding for all $j$ simultaneously,
-    \begin{equation*}
-        \|\bar{\bm{\Sigma}}_{j}-\bm{\Sigma}^{*}\|_{\operatorname{op}}=\mathcal{O}_{p}\left(Q\sqrt{\frac{\log Q}{J}}+\frac{Q\log Q}{J}\right).
-    \end{equation*}
+    $\hat{\bm{\theta}}_{n}\to \bm{\theta}^{*}$ in probability as $J\to \infty$.
 \end{theorem}
 
-\subsection{Asymmetry}
-
-By the triangle inequality, 
-\begin{equation}
-    \|\hat{\bm{\Sigma}}_{\operatorname{obs}}-\bm{\Sigma}^{*}\|_{\operatorname{op}}\leq \|\bar{\bm{\Sigma}}-\bm{\Sigma}^{*}\|+\|\hat{\bm{\Sigma}}_{\operatorname{obs}}-\bar{\bm{\Sigma}}\|_{\operatorname{op}}.
-\end{equation}
-
-\begin{theorem}
-    Suppose that $\|\hat{\bm{\Sigma}}_{\operatorname{obs}}-\bm{\Sigma}^{*}\|_{\operatorname{op}}=\mathcal{O}_{p}(\epsilon_{J,Q})$ for $\epsilon_{J,Q}=\mathcal{o}(Q)$. Let $\hat{\mathbf{U}}\in \mathbb{R}^{Q\times K}$ and $\mathbf{U}^{*}\in \mathbb{R}^{Q\times K}$ are the orthonormal bases for the top-K eigenspaces of $\hat{\bm{\Sigma}}_{\operatorname{obs}}$ and $\bm{\Sigma}^{*}$ respectively. Then,
+\begin{proof}
+    For a fixed $\epsilon>0$, let $\delta=\bar{\ell}(\bm{\theta}^{*})-\sup_{\bm{\theta}\in K_{\epsilon}}\bar{\ell}(\bm{\theta})$. By Lemma~\ref{lem:identification1}, $\delta>0$. By Theorem~\ref{thm:uniconverge}, $\mathbb{P}\left(\sup_{\bm{\theta}\in \Theta}|\ell_{n}(\bm{\theta})-\bar{\ell}(\bm{\theta})|< \frac{\delta}{2}\right)=1$. Since $\hat{\bm{\theta}}_{n}$ maximizes $\ell_{n}$ over $\Theta$, where the true value $\bm{\theta}^{*}$ holds, thus,
     \begin{equation*}
-        \|\sin \Theta\left(\hat{\mathbf{U}},\mathbf{U}^{*}\right)\|_{\operatorname{op}}=\mathcal{O}_{p}(\frac{\epsilon_{J,Q}}{Q}).
+        \ell_{n}(\hat{\bm{\theta}}_{n})\geq \ell_{n}(\bm{\theta}^{*})>\bar{\ell}(\bm{\theta}^{*})-\dfrac{\delta}{2},
     \end{equation*}
-\end{theorem}
+\end{proof}
+\fi
 
 \section{Complexity Analysis}
 \label{sec:complexity-analysis}
@@ -711,7 +755,7 @@ factorisation, while the two operations that are \emph{not} functions of the
 diagonal-plus-low-rank structure---the $O(I_jQ)$ objective/softmax evaluations and the $Q$
 independent Poisson GLMs of the fixed-effect step---are, correctly, left unchanged. The
 acceleration is therefore confined to exactly the linear-algebra that the PME-induced
-structure of \S\ref{sec:curvature} makes reducible, and to nothing else; this is why the
+structure makes reducible, and to nothing else; this is why the
 per-operation speed-up columns scale as $Q^2/K^2$ for the E-step and $Q/K$ for the
 Rubin--Thayer update, and not as a single global constant.
 
