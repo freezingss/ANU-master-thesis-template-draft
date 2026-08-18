@@ -1,22 +1,26 @@
 \newpage
 \begin{table}[H]
 \centering
-\begin{tabular}{cc}
-\hline
-\textbf{Notation}    & \textbf{Definition or Description}               \\ \hline
-$i$                    & Observation Index $i=1,2,\dots,I$           \\
-$j$                    & Group Index $j=1,2,\dots,J$                 \\
-$q$                    & Category Index $q=1,2,\dots,Q$              \\
-$k$                    & Latent Index $k=1,2,\dots,K$                \\
-$\bm{y}_{ij}$                     & The $i$-th observation in $j$-th group                                                 \\
-$y_{ij\cdot}$                     & Observation Total Sum                                                 \\
+\caption{The list of notations used in this thesis.}\label{tab:notation}
+
+\begin{tabular}{cl}
+\toprule
+\textbf{Notation}    & \textbf{Definition or Description}               \\ 
+\midrule
+$I$ & The total number of observations \\
+$J$ & The total number of groups \\
+$Q$ & The total number of categories \\
+$K$ & The total number of latent factors \\
+$i$                    & Observation index $i=1,2,\dots,I$           \\
+$j$                    & Group index $j=1,2,\dots,J$                 \\
+$q$                    & Category index $q=1,2,\dots,Q$              \\
+$k$                    & Latent index $k=1,2,\dots,K$                \\
+$\bm{y}_{ij}$                     & The $i$-th count in the $j$-th group                                                 \\
+$y_{ij\cdot}$                     & Total count for observation $i$ in the $j$-th group                                                 \\
 PME                     & Poisson-Multinomial Equivalence (introduced in~\ref{sec:PME})                                                 \\
-$\mathbf{B}$                    & Loading Matrix in $\mathbf{R}^{Q\times K}$       \\
-$\mathbf{D}$                    & Idiosyncratic Matrix in $\mathbf{R}^{Q\times Q}$ \\
-$\mathbf{f}$                     & Latent Vector                                                 \\
-                     &                                                  \\
-\multicolumn{1}{l}{} & \multicolumn{1}{l}{}                             \\
-\multicolumn{1}{l}{} & \multicolumn{1}{l}{}                             \\
-\multicolumn{1}{l}{} & \multicolumn{1}{l}{}                             \\ \hline
+$\mathbf{B}$                    & Loading matrix in $\mathbf{R}^{Q\times K}$       \\
+$\mathbf{D}$                    & Idiosyncratic matrix in $\mathbf{R}^{Q\times Q}$ \\
+$\mathbf{f}$                     & A latent vector                                                 \\
+\bottomrule
 \end{tabular}
 \end{table}

@@ -3,7 +3,7 @@
 \usepackage{svn-multi}
 \svnid{$Id$}
 \usepackage{prelim2e}
-\renewcommand{\PrelimWords}{Draft Copy \svnkw{Id}}
+\renewcommand{\PrelimWords}{\svnkw{Id}}
 %%\newcommand*{\mysvnrev}{\svnrev}
 \usepackage[hyperindex=true,
 			bookmarks=true,
@@ -17,7 +17,7 @@
             pagebackref=true,
             hyperfootnotes=false]{hyperref}
 \usepackage[all]{hypcap}
-\usepackage[palatino]{anuthesis}
+\usepackage[palatino, draft]{anuthesis}
 \usepackage{afterpage}
 \usepackage{graphicx}
 \usepackage{caption}
@@ -70,7 +70,7 @@
 \input{macros}            
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Preamble
-\title{Title Is Here}
+\title{Factor Analytic Distributed Multinomial Model}
 \author{Mingyang Sheng}
 \date{\today}
 
@@ -116,7 +116,7 @@
 \listoffigures
 \listoftables
 
-\input{notation}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Here begins the main text
 \mainmatter
@@ -124,6 +124,7 @@
 %% Introduction
 \input{intro}
 
+\input{notation}
 %% Chapters
 \input{background}
 % \input{design}
