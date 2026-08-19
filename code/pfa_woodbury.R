@@ -1,74 +1,57 @@
-apply_PLT <- function(B) {
-  K <- ncol(B)
-  qr_obj <- qr(t(B[1:K, , drop = FALSE]))
-  B_rot <- B %*% qr.Q(qr_obj)
-  for (k in 1:K) if (B_rot[k, k] < 0) B_rot[, k] <- -B_rot[, k]
-  for (k in 1:K) if (k > 1) B_rot[1:(k - 1), k] <- 0
-  B_rot
-}
-
 row_softmax <- function(eta) { mx <- apply(eta, 1, max); ee <- exp(eta - mx); ee / rowSums(ee) }
 row_logsumexp <- function(eta) { mx <- apply(eta, 1, max); mx + log(rowSums(exp(eta - mx))) }
 
 
 laplace_lambda_j_wb2 <- function(Y_j, X_j, M_j, mu, phi, B, sigma2,
-                                BtB, M_K, M_K_inv, log_det_MK,
-                                max_iter = 100, gtol = 1e-3, bt_max = 30,
-                                c1 = 1e-4, exact_Shat = FALSE) {
+                                 BtB, M_K, M_K_inv, log_det_MK,
+                                 max_iter = 100, gtol = 1e-3, bt_max = 30,
+                                 c1 = 1e-4, exact_Shat = FALSE) {
   N_j <- nrow(Y_j); Q <- ncol(Y_j); K <- ncol(B)
   fixed <- matrix(rep(mu, each = N_j), N_j, Q) + X_j %*% phi
-
   Sinv <- function(v) v / sigma2 - B %*% (M_K_inv %*% (t(B) %*% v)) / sigma2^2
-
   lp <- function(a) {
     eta <- sweep(fixed, 2, a, "+")
     sum(Y_j * eta) - sum(M_j * row_logsumexp(eta)) - 0.5 * sum(a * Sinv(a))
   }
-
   wb_solve <- function(g, d) {
-    dt <- d + 1 / sigma2             
+    dt <- d + 1 / sigma2
     idt <- 1 / dt
     Gam <- t(B) %*% (idt * B) - sigma2^2 * M_K
     L <- tryCatch(chol(-Gam + 1e-10 * diag(K)), error = function(e) NULL)
-    if (is.null(L)) return(g * 0.01)  
+    if (is.null(L)) return(g * 0.01)
     idt * g - idt * (B %*% backsolve(L, forwardsolve(t(L), -crossprod(B, idt * g))))
   }
-
   lambda <- rep(0, Q)
   lp_cur <- lp(lambda)
   g <- rep(Inf, Q)
   d <- rep(0, Q)
-
   for (iter in 1:max_iter) {
     eta <- sweep(fixed, 2, lambda, "+")
     pi <- row_softmax(eta)
     Mpi <- sweep(pi, 1, M_j, "*")
-
-    d <- as.numeric(colSums(Mpi))                       
-    g <- as.numeric(colSums(Y_j - Mpi)) - Sinv(lambda)   
-
+    d <- as.numeric(colSums(Mpi))
+    g <- as.numeric(colSums(Y_j - Mpi)) - Sinv(lambda)
     if (max(abs(g)) < gtol) break
-
-    dir <- wb_solve(g, d)                           
-    gd <- sum(g * dir)                           
-
+    dir <- wb_solve(g, d)
+    gd <- sum(g * dir)
     step <- 1; accepted <- FALSE
     for (bt in 1:bt_max) {
       if (lp(lambda + step * dir) >= lp_cur + c1 * step * gd) { accepted <- TRUE; break }
       step <- step * 0.5
     }
-    if (!accepted) break             
+    if (!accepted) break
     lambda  <- lambda + step * dir
     lp_cur <- lp(lambda)
   }
-
+  eta <- sweep(fixed, 2, lambda, "+")
+  pi  <- row_softmax(eta)
+  Mpi <- sweep(pi, 1, M_j, "*")
+  d   <- as.numeric(colSums(Mpi))
+  g   <- as.numeric(colSums(Y_j - Mpi)) - Sinv(lambda)
   if (exact_Shat) {
     Sinv_mat <- diag(1 / sigma2, Q) - B %*% M_K_inv %*% t(B) / sigma2^2
-    eta <- sweep(fixed, 2, lambda, "+")
-    pi  <- row_softmax(eta)
-    Mpi <- sweep(pi, 1, M_j, "*")
     negH <- diag(as.numeric(colSums(Mpi)), Q) - crossprod(pi, Mpi) + Sinv_mat
-    cL  <- chol(negH)                                  
+    cL  <- chol(negH)
     S_hat        <- chol2inv(cL)
     log_det_shat <- -2 * sum(log(diag(cL)))
   } else {
@@ -122,10 +105,6 @@ estep_wb <- function(J, group, Y, X, M, mu, phi, B, sigma2,
 }
 
 
-# =============================================================================
-# 3. M-STEP (a): fixed effects (mu, phi) 
-# =============================================================================
-
 mstep_phi_wb <- function(Y, X, group, lambda_hat, mu, phi, lambda_phi = 0) {
   N <- nrow(Y); Q <- ncol(Y); P <- ncol(X)
   A_obs <- t(lambda_hat[, group, drop = FALSE])
@@ -173,12 +152,10 @@ rubin_thayer_wb <- function(Sigma_obs, K, B_init = NULL, sigma2_init = 0.3,
     SoB <- Sigma_obs %*% B             
     BtSB <- crossprod(B, SoB)     
 
-    # Theta = M_K^{-1} + (1/sigma2^2) * M_K^{-1} * BtSB * M_K^{-1}
-    Theta  <- Mki + Mki %*% BtSB %*% Mki / sigma2^2   # K x K
-    B_new  <- SoB %*% (Mki %*% solve(Theta)) / sigma2  # Q x K
+    Theta  <- Mki + Mki %*% BtSB %*% Mki / sigma2^2   
+    B_new  <- SoB %*% (Mki %*% solve(Theta)) / sigma2  
 
-    # sigma2 = (tr(Sigma_obs) - (1/sigma2)*tr(M_K^{-1} B' Sigma_obs B_new)) / Q
-    BtSBn <- crossprod(SoB, B_new)           # K x K: B' Sigma_obs B_new
+    BtSBn <- crossprod(SoB, B_new)         
     trace_term <- sum(Mki * t(BtSBn)) / sigma2
     sigma2_new <- max((trS - trace_term) / Q, 1e-6)
 

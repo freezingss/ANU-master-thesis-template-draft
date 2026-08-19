@@ -1,7 +1,6 @@
 library(glmmTMB)
 library(bench)
 library(nnet)
-library(psych)
 library(Matrix)
 
 # glmmTMB reference fit (without idiosyncratic variance)
@@ -102,7 +101,7 @@ estep_dense <- function(J, group, Y, X, M, mu, phi, B, sigma2,
   Sigma <- B %*% t(B) + sigma2 * diag(Q)
   Sigma_inv <- tryCatch({
     cholSigma <- Cholesky(Sigma)
-    solve(choSigma, Diagonal(Q))
+    solve(cholSigma, Diagonal(Q))
   }, error = function(e) {diag(Q) / sigma2})
   ldSigma <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
 

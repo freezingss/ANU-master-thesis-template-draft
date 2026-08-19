@@ -6,15 +6,17 @@ subspace_dist <- function(B1, B2) {
   sqrt(sum(1 - sv^2))
 }
 
-# Build Long Dataframe 
 build_long <- function(Y, X, group) {
   N <- nrow(Y); Q <- ncol(Y); P <- ncol(X)
+  
   long <- data.frame(
-    count    = as.vector(Y),                                
-    category = factor(rep(seq_len(Q), each = N)),
-    obs      = factor(rep(seq_len(N), times = Q)),
-    group    = factor(rep(group,      times = Q))
+    count     = as.vector(Y),
+    category  = factor(rep(seq_len(Q), each = N)),
+    group     = factor(rep(group, times = Q)),
+    log_total = rep(log(rowSums(Y)), times = Q)
   )
+  long$obs <- interaction(long$group, long$category, drop = TRUE)
+  
   if (P > 1) {
     for (p in 2:P) long[[paste0("x", p)]] <- rep(X[, p], times = Q)
   }

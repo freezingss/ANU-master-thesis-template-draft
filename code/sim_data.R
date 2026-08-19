@@ -27,12 +27,7 @@ simulate_pfa_data <- function(Q = 50, K = 2, J = 30, N_per_group = 15,
                    lambda = lambda, sigma2 = sigma2))
 }
 
-subspace_dist <- function(B1, B2) {
-  U1 <- svd(B1, nu = ncol(B1))$u
-  U2 <- svd(B2, nu = ncol(B2))$u
-  K <- ncol(B1)
-  sqrt(max(K - sum((t(U1) %*% U2)^2), 0))
-}
+
 
 lambda_mean_cor <- function(lambda_hat, lambda_true) {
   J <- ncol(lambda_true)

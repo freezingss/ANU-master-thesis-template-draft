@@ -22,7 +22,7 @@ fit_gllvm_ref <- function(Y, X, group, K) {
 cat(sprintf("%6s | %14s %14s %14s %14s %10s %10s %10s %8s\n",
             "Q", "Woodbury(s)", "wb mem(MB)", "gllvm(s)", "gllvm mem(MB)",
             "wb vs tru", "gl vs tru", "wb vs gl", "conv?"))
-for (Q in c(75, 100, 125, 150)) {
+for (Q in c(20, 30, 50)) {
   K <- 2; J <- 30; Nj <- 15
   dat <- simulate_pfa_data(Q = Q, K = K, J = J, N_per_group = Nj, seed = Q)
   
