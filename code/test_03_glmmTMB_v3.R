@@ -4,66 +4,68 @@ library(bench)
 stopifnot(packageVersion("glmmTMB") >= "1.1.8")
 
 source("pfa_woodbury.R") # fit_pfa_woodbury()
-source("pfa_woodbury_G.R") # fit_pfa_woodbury_G()
-source("pfa_woodbury_lam_corr.R") # fit_pfa_woodbury_lam_corr()
-source("pfa_woodbury_lambda_corrected.R") # correct_lambda_edgeworth()
+# source("pfa_woodbury_G.R") # fit_pfa_woodbury_G()
+# source("pfa_woodbury_lam_corr.R") # fit_pfa_woodbury_lam_corr()
+# source("pfa_woodbury_lambda_corrected.R") # correct_lambda_edgeworth()
+source("pfa_woodbury_G_dense_final.R")
+source("pfa_woodbury_lam_corrected_final.R")
 source("sim_data.R")
 source("basic_functions.R")
 
-if (!exists("fit_glmmTMB_ref")) {
-  fit_glmmTMB_ref <- function(Y, X, group, K, time_limit = Inf, verbose = TRUE) {
-    long <- build_long(Y, X, group)
-    t0 <- proc.time()["elapsed"]
-
-    n_obs_levels <- length(unique(long$obs))
-    n_gc_pairs   <- length(unique(interaction(long$group, long$category, drop = TRUE)))
-    if (n_obs_levels != n_gc_pairs) {
-      stop(sprintf("obs is not unique per (group, category): %d obs levels vs %d (group, category) pairs.",
-                    n_obs_levels, n_gc_pairs))
-    }
-    if (anyNA(long$count) || anyNA(long$category) || anyNA(long$group) ||
-        anyNA(long$obs) || anyNA(long$log_total)) stop("NA found in build_long() output.")
-    if (any(!is.finite(long$log_total))) stop("long$log_total has non-finite value(s).")
-
-    form <- as.formula(paste0("count ~ category + rr(category + 0 | group, d = ", K, ") + (1 | obs)"))
-    fit_once <- function(ctrl) {
-      tryCatch(glmmTMB(form, data = long, family = poisson(link = "log"),
-                        offset = long$log_total, control = ctrl),
-                error = function(e) e)
-    }
-    ctrl_default <- glmmTMBControl(optCtrl = list(iter.max = 1000, eval.max = 1000))
-    fit <- fit_once(ctrl_default)
-    if (inherits(fit, "error")) {
-      ctrl_res <- glmmTMBControl(optCtrl = list(iter.max = 1000, eval.max = 1000),
-                                  start_method = list(method = "res"))
-      fit2 <- fit_once(ctrl_res)
-      if (inherits(fit2, "error")) {
-        el <- proc.time()["elapsed"] - t0
-        return(list(B = NULL, sigma2 = NA_real_, time = el, ok = FALSE, converged = FALSE,
-                    error = paste0("default: ", conditionMessage(fit), " | res-start: ", conditionMessage(fit2))))
-      }
-      fit <- fit2
-    }
-    el <- proc.time()["elapsed"] - t0
-    conv <- isTRUE(fit$sdr$pdHess)
-
-    L <- tryCatch({
-      vc <- as.matrix(VarCorr(fit)$cond$group)
-      e  <- eigen((vc + t(vc)) / 2, symmetric = TRUE)
-      e$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(e$values[1:K], 0)), K)
-    }, error = function(e) NULL)
-    if (is.null(L)) {
-      L <- tryCatch(as.matrix(fit$obj$env$report(fit$fit$parfull)$fact_load[[1]]),
-                     error = function(e) NULL)
-    }
-    if (is.null(L)) {
-      return(list(B = NULL, sigma2 = NA_real_, time = el, ok = FALSE, converged = conv,
-                  error = "loading extraction failed"))
-    }
-    sigma2_hat <- tryCatch(as.numeric(VarCorr(fit)$cond$obs)[1], error = function(e) NA_real_)
-    list(B = L, sigma2 = sigma2_hat, time = el, ok = TRUE, converged = conv, error = NA_character_)
-  }
-}
+# if (!exists("fit_glmmTMB_ref")) {
+#   fit_glmmTMB_ref <- function(Y, X, group, K, time_limit = Inf, verbose = TRUE) {
+#     long <- build_long(Y, X, group)
+#     t0 <- proc.time()["elapsed"]
+# 
+#     n_obs_levels <- length(unique(long$obs))
+#     n_gc_pairs   <- length(unique(interaction(long$group, long$category, drop = TRUE)))
+#     if (n_obs_levels != n_gc_pairs) {
+#       stop(sprintf("obs is not unique per (group, category): %d obs levels vs %d (group, category) pairs.",
+#                     n_obs_levels, n_gc_pairs))
+#     }
+#     if (anyNA(long$count) || anyNA(long$category) || anyNA(long$group) ||
+#         anyNA(long$obs) || anyNA(long$log_total)) stop("NA found in build_long() output.")
+#     if (any(!is.finite(long$log_total))) stop("long$log_total has non-finite value(s).")
+# 
+#     form <- as.formula(paste0("count ~ category + rr(category + 0 | group, d = ", K, ") + (1 | obs)"))
+#     fit_once <- function(ctrl) {
+#       tryCatch(glmmTMB(form, data = long, family = poisson(link = "log"),
+#                         offset = long$log_total, control = ctrl),
+#                 error = function(e) e)
+#     }
+#     ctrl_default <- glmmTMBControl(optCtrl = list(iter.max = 1000, eval.max = 1000))
+#     fit <- fit_once(ctrl_default)
+#     if (inherits(fit, "error")) {
+#       ctrl_res <- glmmTMBControl(optCtrl = list(iter.max = 1000, eval.max = 1000),
+#                                   start_method = list(method = "res"))
+#       fit2 <- fit_once(ctrl_res)
+#       if (inherits(fit2, "error")) {
+#         el <- proc.time()["elapsed"] - t0
+#         return(list(B = NULL, sigma2 = NA_real_, time = el, ok = FALSE, converged = FALSE,
+#                     error = paste0("default: ", conditionMessage(fit), " | res-start: ", conditionMessage(fit2))))
+#       }
+#       fit <- fit2
+#     }
+#     el <- proc.time()["elapsed"] - t0
+#     conv <- isTRUE(fit$sdr$pdHess)
+# 
+#     L <- tryCatch({
+#       vc <- as.matrix(VarCorr(fit)$cond$group)
+#       e  <- eigen((vc + t(vc)) / 2, symmetric = TRUE)
+#       e$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(e$values[1:K], 0)), K)
+#     }, error = function(e) NULL)
+#     if (is.null(L)) {
+#       L <- tryCatch(as.matrix(fit$obj$env$report(fit$fit$parfull)$fact_load[[1]]),
+#                      error = function(e) NULL)
+#     }
+#     if (is.null(L)) {
+#       return(list(B = NULL, sigma2 = NA_real_, time = el, ok = FALSE, converged = conv,
+#                   error = "loading extraction failed"))
+#     }
+#     sigma2_hat <- tryCatch(as.numeric(VarCorr(fit)$cond$obs)[1], error = function(e) NA_real_)
+#     list(B = L, sigma2 = sigma2_hat, time = el, ok = TRUE, converged = conv, error = NA_character_)
+#   }
+# }
 
 fit_pfa_woodbury_G_wrapper <- function(Y, X, group, K, M, max_iter = 80, fix_sigma2 = NULL) {
   fit_pfa_woodbury_G(Y, X, group, K, M = M, max_iter = max_iter, tol = 1e-8,
@@ -174,6 +176,8 @@ for (J in Js) {
 }
 
 saveRDS(q_results, "q_results_J50100(50)_Q50_seed13_largesigma2.rds")
+
+source("diagnose_sigma.R")
 
 # # Diagnostic analysis
 # 
