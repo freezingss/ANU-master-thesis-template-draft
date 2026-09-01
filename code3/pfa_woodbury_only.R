@@ -1,7 +1,4 @@
 # pfa_woodbury without PME tricky
-# 修改：1. 把参数exact_Shat删掉 放弃PME 主攻woodbury+edgeworth优化
-# 2. 加入backtracking保证Heywood problem不出现
-# 3. 后续优化edgeworth的计算 简化Q^2和Q^3的计算步骤
 
 laplace_lambda_j_wbonly <- function(Y_j, X_j, M_j, mu, phi, B, sigma2,
                                     BtB, M_K, M_K_inv, log_det_MK,
@@ -166,12 +163,12 @@ fit_pfa_wbonly_traced <- function(Y, X, group, K,
     
     log_ev[em] <- es$lp_total - 0.5 * J * es$log_det_Sigma + 0.5 * es$ld_S_total
     
-    mp <- mstep_phi_wb(Y, X, group, lambda_hat, mu, phi, lambda_phi = lambda_phi)
+    mp <- mstep_phi_wbonly(Y, X, group, lambda_hat, mu, phi, lambda_phi = lambda_phi)
     mu <- mp$mu; phi <- mp$phi
     
     S_obs <- tcrossprod(lambda_hat) / J
     for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
-    rt <- rubin_thayer_wb(S_obs, K, B_init = B, sigma2_init = sigma2)
+    rt <- rubin_thayer_wbonly(S_obs, K, B_init = B, sigma2_init = sigma2)
     B <- apply_PLT(rt$B)
     sigma2 <- rt$sigma2
     
