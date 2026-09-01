@@ -1,3 +1,5 @@
+# gllvm() result: compared with wb, corr and glmmTMB() in test_03_glmmTMB  
+
 library(gllvm)
 library(bench) # timing
 
@@ -6,6 +8,8 @@ source("pfa_woodbury_only.R") # woodbury
 source("pfa_woodbury_lam_corrected.R") # woodbury + lambda correction
 source("sim_data.R")
 source("basic_functions.R")
+
+
 
 if (!exists("fit_gllvm_ref")) {
   
@@ -22,6 +26,10 @@ if (!exists("fit_gllvm_ref")) {
     if (!is.null(X)) {
       Xm <- as.matrix(X)
       Xg <- t(sapply(ug, function(g) colMeans(Xm[group == g, , drop = FALSE])))
+      # gllvm内部会用列名去拼公式字符串, Xg没有列名的话拼出来的公式会变成
+      # "~ 0 + "这种缺变量名的残缺字符串, parse时直接报unexpected end of
+      # input。这里强制给它编上列名, 不管Xm本身有没有列名。
+      colnames(Xg) <- if (!is.null(colnames(Xm))) colnames(Xm) else paste0("x", seq_len(ncol(Xg)))
     }
     
     fit <- tryCatch(
@@ -48,21 +56,24 @@ if (!exists("fit_gllvm_ref")) {
       return(list(B = NULL, sigma2 = NA_real_, time = el, ok = FALSE,
                   converged = conv, error = "loading extraction failed"))
     }
+    # sigma2 这里恒为 NA: gllvm 的 Poisson/NB 潜变量模型结构上没有一个跟
+    # FA-DMR 的 sigma2*I_Q (idiosyncratic 噪声) 直接对应的量, 不去凑一个假的。
     list(B = B, sigma2 = NA_real_, time = el, ok = TRUE, converged = conv,
          error = NA_character_)
   }
 }
 
-# Monotone Check
-is_monotone_loglik <- function(fit) {
-  all(diff(fit$log_evidence) >= 0)
-}
-
-monotone_diagnostics <- function(fit) {
-  d <- diff(fit$log_evidence)
-  list(monotone = all(d >= 0), n_decreasing = sum(d < 0),
-       first_decrease_iter = if (any(d < 0)) which(d < 0)[1] + 1 else NA_integer_)
-}
+# wb/corr 才需要看log_evidence是否单调, gllvm的拟合不是EM迭代, 没有这个概念,
+# 这两个函数在这个文件里已经用不到了, 一起注释掉。
+# is_monotone_loglik <- function(fit) {
+#   all(diff(fit$log_evidence) >= 0)
+# }
+#
+# monotone_diagnostics <- function(fit) {
+#   d <- diff(fit$log_evidence)
+#   list(monotone = all(d >= 0), n_decreasing = sum(d < 0),
+#        first_decrease_iter = if (any(d < 0)) which(d < 0)[1] + 1 else NA_integer_)
+# }
 
 # RUN CODE
 Js <- c(25, 50, 100, 150)
@@ -73,13 +84,13 @@ Nj <- 15
 
 gllvm_results <- data.frame(
   J = integer(), Q = integer(), seed = integer(),
-  time_s = numeric(), d_true = numeric(),
-  sigma2_true = numeric(), sigma2_gllvm = numeric(), err_gllvm = numeric(),
-  converged = character(), stringsAsFactors = FALSE
+  method = character(), time_s = numeric(),
+  sigma2 = numeric(), d_true = numeric(), converged = logical(),
+  error_msg = character(), stringsAsFactors = FALSE
 )
 
-cat(sprintf("%5s %6s %6s | %14s %10s %10s %10s %8s\n %10s\n",
-            "J", "Q", "seed", "method", "time(s)", "sigma2", "d vs true", "conv?", "LL mono?"))
+cat(sprintf("%5s %6s %6s | %10s %10s %10s %8s\n",
+            "J", "Q", "seed", "time(s)", "sigma2", "d vs true", "conv?"))
 
 for (J in Js) {
   for (Q in Qs) {
@@ -98,27 +109,28 @@ for (J in Js) {
       #   iterations = 1, check = FALSE, memory = FALSE)
       # t_base <-as.numeric(b_base$median)
       
-      b_wb <- bench::mark(
-        fw_only <<- fit_pfa_wbonly_traced(dat$Y, dat$X, dat$group, K = K, M = dat$M,
-                                          max_iter = 80, tol = 1e-3, sigma2_init = target, 
-                                          verbose = FALSE, estep_max_iter = 100,
-                                          estep_gtol = 1e-3, B_true = NULL),
-        iterations = 1, check = FALSE, memory = FALSE)
-      t_wb <- as.numeric(b_wb$median)
+      # wb (woodbury only) —— 已经在glmmTMB那份脚本里跑过, 这里不重复跑
+      # b_wb <- bench::mark(
+      #   fw_only <<- fit_pfa_wbonly_traced(dat$Y, dat$X, dat$group, K = K, M = dat$M,
+      #                                     max_iter = 80, tol = 1e-3, sigma2_init = target, 
+      #                                     verbose = FALSE, estep_max_iter = 100,
+      #                                     estep_gtol = 1e-3, B_true = NULL),
+      #   iterations = 1, check = FALSE, memory = FALSE)
+      # t_wb <- as.numeric(b_wb$median)
       
       # REML-corrected sigma2
       # s2_reml <- fw_old$sigma2 * J / (J - K)
       
-      # corrected (Woodbury + Edgeworth)
-      b_corr <- bench::mark(
-        fw_corr <<- fit_pfa_woodbury_lam_corr(dat$Y, dat$X, dat$group, K, M = dat$M,
-                                              max_iter = 80, tol = 1e-3, sigma2_init = target,
-                                              verbose = FALSE, estep_max_iter = 100, estep_gtol = 1e-3,
-                                              B_true = NULL,
-                                              corr_max_rel = 0.5, 
-                                              use_lambda_correction = TRUE),
-        iterations = 1, check = FALSE, memory = FALSE)
-      t_corr <- as.numeric(b_corr$median)
+      # corrected (Woodbury + Edgeworth) —— 已经在glmmTMB那份脚本里跑过, 这里不重复跑
+      # b_corr <- bench::mark(
+      #   fw_corr <<- fit_pfa_woodbury_lam_corr(dat$Y, dat$X, dat$group, K, M = dat$M,
+      #                                         max_iter = 80, tol = 1e-3, sigma2_init = target,
+      #                                         verbose = FALSE, estep_max_iter = 100, estep_gtol = 1e-3,
+      #                                         B_true = NULL,
+      #                                         corr_max_rel = 0.5, 
+      #                                         use_lambda_correction = TRUE),
+      #   iterations = 1, check = FALSE, memory = FALSE)
+      # t_corr <- as.numeric(b_corr$median)
       
       # gllvm()
       b_gl <- tryCatch(
@@ -129,55 +141,74 @@ for (J in Js) {
       t_gl <- if (ok) as.numeric(b_gl$median) else NA
       
       # d_base_true <- subspace_dist(fw_base$B, dat$true$B)
-      d_only_true  <- subspace_dist(fw_only$B, dat$true$B)
-      d_corr_true <- subspace_dist(fw_corr$B, dat$true$B)
-      # d_G_true    <- subspace_dist(fw_G$B, dat$true$B)
-      # d_Gf_true   <- subspace_dist(fw_G_frz$B, dat$true$B)
+      # d_only_true  <- subspace_dist(fw_only$B, dat$true$B)
+      # d_corr_true <- subspace_dist(fw_corr$B, dat$true$B)
       d_gl_true   <- if (ok) subspace_dist(fr$B, dat$true$B) else NA
       
-      rows <- data.frame(
+      row <- data.frame(
         J = J, Q = Q, seed = seed,
-        method = c("base", "woodbury only", "corrected", "gllvm()"),
-        time_s = c(NA, t_wb, t_corr, t_gl),
-        sigma2 = c(NA, fw_only$sigma2, fw_corr$sigma2, if (ok) fr$sigma2 else NA),
-        d_true = c(NA, d_only_true, d_corr_true, d_gl_true),
-        converged = c(NA, fw_only$converged, fw_corr$converged,
-                      if (ok) fr$converged else NA),
-        log_lik_monotone = c(sapply(list(NA, fw_old, fw_corr), function(f) monotone_diagnostics(f)$monotone), NA),
+        method = "gllvm()",
+        time_s = t_gl,
+        sigma2 = if (ok) fr$sigma2 else NA_real_,
+        d_true = d_gl_true,
+        converged = if (ok) fr$converged else NA,
+        error_msg = if (!is.null(b_gl)) fr$error else "bench::mark itself errored",
         stringsAsFactors = FALSE
       )
-      q_results <- rbind(q_results, rows)
+      gllvm_results <- rbind(gllvm_results, row)
       
-      for (i in seq_len(nrow(rows))) {
-        cat(sprintf("%5d %6d %6d | %14s %10.2f %10.4f %10s %8s\n %10s\n",
-                    J, Q, seed, rows$method[i], rows$time_s[i], rows$sigma2[i],
-                    if (is.na(rows$d_true[i])) "-" else sprintf("%.4f", rows$d_true[i]),
-                    if (is.na(rows$converged[i])) "-" else ifelse(rows$converged[i], "yes", "NO"),
-                    if (is.na(rows$log_lik_monotone[i])) "-" else ifelse(rows$log_lik_monotone[i], "yes", "NO")))
-      }
+      cat(sprintf("%5d %6d %6d | %10.2f %10s %10s %8s\n",
+                  J, Q, seed, row$time_s,
+                  if (is.na(row$sigma2)) "-" else sprintf("%.4f", row$sigma2),
+                  if (is.na(row$d_true)) "-" else sprintf("%.4f", row$d_true),
+                  if (is.na(row$converged)) "-" else ifelse(row$converged, "yes", "NO")))
+      if (!ok) cat(sprintf("    -> gllvm error: %s\n", row$error_msg))
       cat(sprintf("  J=%d Q=%d seed=%d | true sigma2=%.4f\n", J, Q, seed, dat$true$sigma2))
     }
   }
 }
 
 # # Calculate the mean of estimations
-# avg_time  <- aggregate(time_s ~ method + Q + J, data = q_results,
+# avg_time  <- aggregate(time_s ~ Q + J, data = gllvm_results,
 #                        FUN = function(x) mean(x, na.rm = TRUE))
-# avg_sigma <- aggregate(sigma2 ~ method + Q + J, data = q_results,
+# avg_d     <- aggregate(d_true ~ Q + J, data = gllvm_results,
 #                        FUN = function(x) mean(x, na.rm = TRUE))
-# avg_d     <- aggregate(d_true ~ method + Q + J, data = q_results,
-#                        FUN = function(x) mean(x, na.rm = TRUE))
-# 
-# avg_results <- Reduce(function(a, b) merge(a, b, by = c("method", "Q", "J")),
-#                       list(avg_time, avg_sigma, avg_d))
-# avg_results <- avg_results[order(avg_results$Q, avg_results$J, avg_results$method), ]
-# 
-# cat("\n Averaged across seeds, per (method, Q, J) \n")
-# cat(sprintf("%14s %6s %6s | %10s %10s %10s\n",
-#             "method", "Q", "J", "time(s)", "sigma2", "d_true"))
+#
+# avg_results <- merge(avg_time, avg_d, by = c("Q", "J"))
+# avg_results <- avg_results[order(avg_results$Q, avg_results$J), ]
+#
+# cat("\n Averaged across seeds, per (Q, J) \n")
+# cat(sprintf("%6s %6s | %10s %10s\n", "Q", "J", "time(s)", "d_true"))
 # for (i in seq_len(nrow(avg_results))) {
-#   cat(sprintf("%14s %6d %6d | %10.2f %10.4f %10.4f\n",
-#               avg_results$method[i], avg_results$Q[i], avg_results$J[i],
-#               avg_results$time_s[i], avg_results$sigma2[i], avg_results$d_true[i]))
+#   cat(sprintf("%6d %6d | %10.2f %10.4f\n",
+#               avg_results$Q[i], avg_results$J[i],
+#               avg_results$time_s[i], avg_results$d_true[i]))
 # }
 
+
+
+# Test
+dat <- simulate_pfa_data(Q = 50, K = 2, J = 25, P = 3, N_per_group = 15, sigma2 = 0.3, M_rate = 150, seed = 1)
+is.null(dat$X)
+dim(dat$Y)
+colnames(dat$Y)
+
+set.seed(1)
+Ytoy <- matrix(rpois(200, lambda = 5), nrow = 20, ncol = 10)
+gllvm::gllvm(y = Ytoy, family = poisson(), num.lv = 2, method = "LA")
+
+gllvm::gllvm(y = dat$Y, family = poisson(), num.lv = 2, method = "LA")
+traceback()
+
+# Test 2
+ug <- sort(unique(dat$group))
+Yg <- t(sapply(ug, function(g) colSums(dat$Y[dat$group == g, , drop = FALSE])))
+Xm <- as.matrix(dat$X)
+Xg <- t(sapply(ug, function(g) colMeans(Xm[dat$group == g, , drop = FALSE])))
+colnames(Xg) <- if (!is.null(colnames(Xm))) colnames(Xm) else paste0("x", seq_len(ncol(Xg)))
+
+dim(Xg)
+colnames(Xg)
+
+gllvm::gllvm(y = Yg, X = Xg, family = poisson(), num.lv = 2, method = "LA")
+traceback()
