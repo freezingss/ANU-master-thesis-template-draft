@@ -79,8 +79,8 @@ monotone_diagnostics <- function(fit) {
 }
 
 # RUN CODE
-Js    <- c(25, 50, 100, 150)
-Qs    <- c(50, 100, 150, 200, 250)
+Js    <- c(100, 150)
+Qs    <- c(50, 100, 150)
 # Qs <- c(50)
 seeds <- 1:3
 # seeds <- c(1,3) # Observed severe unstable for old woodbury + PME
@@ -106,13 +106,13 @@ for (J in Js) {
 
       dat <- simulate_pfa_data(Q = Q, K = K, J = J, P = 3, N_per_group = Nj, sigma2 = target, M_rate = 150, seed = seed)
       
-      b_base <- bench::mark(
-        fw_base <<- fit_pfa_dense(dat$Y, dat$X, dat$group, K = K, M = dat$M,
-                                  max_iter = 80, tol = 1e-3, sigma2_init = target, 
-                                  verbose = FALSE, estep_max_iter = 100,
-                                  estep_gtol = 1e-3),
-        iterations = 1, check = FALSE, memory = FALSE)
-      t_base <-as.numeric(b_base$median)
+      # b_base <- bench::mark(
+      #   fw_base <<- fit_pfa_dense(dat$Y, dat$X, dat$group, K = K, M = dat$M,
+      #                             max_iter = 80, tol = 1e-3, sigma2_init = target, 
+      #                             verbose = FALSE, estep_max_iter = 100,
+      #                             estep_gtol = 1e-3),
+      #   iterations = 1, check = FALSE, memory = FALSE)
+      # t_base <-as.numeric(b_base$median)
 
       b_wb <- bench::mark(
         fw_only <<- fit_pfa_wbonly_traced(dat$Y, dat$X, dat$group, K = K, M = dat$M,
@@ -158,7 +158,7 @@ for (J in Js) {
       ok <- !is.null(b_gt) && isTRUE(fr$ok)
       t_gt <- if (ok) as.numeric(b_gt$median) else NA
       
-      d_base_true <- subspace_dist(fw_base$B, dat$true$B)
+      # d_base_true <- subspace_dist(fw_base$B, dat$true$B)
       d_only_true  <- subspace_dist(fw_only$B, dat$true$B)
       d_corr_true <- subspace_dist(fw_corr$B, dat$true$B)
       # d_G_true    <- subspace_dist(fw_G$B, dat$true$B)
@@ -181,13 +181,13 @@ for (J in Js) {
       # )
       rows <- data.frame(
         J = J, Q = Q, seed = seed,
-        method = c("base", "woodbury only", "corrected", "glmmTMB rr()"),
-        time_s = c(t_base, t_wb, t_corr, t_gt),
-        sigma2 = c(fw_base$sigma2, fw_only$sigma2, fw_corr$sigma2, if (ok) fr$sigma2 else NA),
-        d_true = c(d_base_true, d_only_true, d_corr_true, d_gt_true),
-        converged = c(fw_base$converged, fw_only$converged, fw_corr$converged,
+        method = c("woodbury only", "corrected", "glmmTMB rr()"),
+        time_s = c(t_wb, t_corr, t_gt),
+        sigma2 = c(fw_only$sigma2, fw_corr$sigma2, if (ok) fr$sigma2 else NA),
+        d_true = c(d_only_true, d_corr_true, d_gt_true),
+        converged = c(fw_only$converged, fw_corr$converged,
                       if (ok) fr$converged else NA),
-        log_lik_monotone = c(sapply(list(fw_base, fw_old, fw_corr), function(f) monotone_diagnostics(f)$monotone), NA),
+        log_lik_monotone = c(sapply(list(fw_only, fw_corr), function(f) monotone_diagnostics(f)$monotone), NA),
         stringsAsFactors = FALSE
       )
       q_results <- rbind(q_results, rows)
