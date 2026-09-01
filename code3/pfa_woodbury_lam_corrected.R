@@ -3,7 +3,7 @@ source("pfa_woodbury_only.R") # estep
 
 correct_lambda_edgeworth <- function(Q, J, lambda_hat, S_hat, Y, X, group, M, mu, phi) {
   
-  cat("length(S_hat)=", length(S_hat), " J=", J, " Q=", Q, "\n")
+  # cat("length(S_hat)=", length(S_hat), " J=", J, " Q=", Q, "\n")
   stopifnot(length(S_hat) == J)
   lam_corr <- lambda_hat
   rel_size <- numeric(J)
