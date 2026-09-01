@@ -72,14 +72,14 @@ K <- 2
 Nj <- 15
 
 gllvm_results <- data.frame(
-  J = integer(), Q = integer(), seed = integer(),
-  time_s = numeric(), d_true = numeric(),
-  sigma2_true = numeric(), sigma2_gllvm = numeric(), err_gllvm = numeric(),
-  converged = character(), stringsAsFactors = FALSE
+  J = integer(), Q = integer(), seed = integer(), method = character(),
+  time_s = numeric(), swigma2 = numeric(), d_true = numeric(),
+  converged = logical(), log_lik_monotone = logical(),
+  stringsAsFactors = FALSE
 )
 
-cat(sprintf("%5s %6s %6s | %14s %10s %10s %10s %8s\n %10s\n",
-            "J", "Q", "seed", "method", "time(s)", "sigma2", "d vs true", "conv?", "LL mono?"))
+cat(sprintf("%5s %6s %6s | %14s %10s %10s %10s %8s\n",
+            "J", "Q", "seed", "method", "time(s)", "sigma2", "d vs true", "conv?"))
 
 for (J in Js) {
   for (Q in Qs) {
@@ -97,28 +97,28 @@ for (J in Js) {
       #                             estep_gtol = 1e-3),
       #   iterations = 1, check = FALSE, memory = FALSE)
       # t_base <-as.numeric(b_base$median)
-      
-      b_wb <- bench::mark(
-        fw_only <<- fit_pfa_wbonly_traced(dat$Y, dat$X, dat$group, K = K, M = dat$M,
-                                          max_iter = 80, tol = 1e-3, sigma2_init = target, 
-                                          verbose = FALSE, estep_max_iter = 100,
-                                          estep_gtol = 1e-3, B_true = NULL),
-        iterations = 1, check = FALSE, memory = FALSE)
-      t_wb <- as.numeric(b_wb$median)
+      # 
+      # b_wb <- bench::mark(
+      #   fw_only <<- fit_pfa_wbonly_traced(dat$Y, dat$X, dat$group, K = K, M = dat$M,
+      #                                     max_iter = 80, tol = 1e-3, sigma2_init = target, 
+      #                                     verbose = FALSE, estep_max_iter = 100,
+      #                                     estep_gtol = 1e-3, B_true = NULL),
+      #   iterations = 1, check = FALSE, memory = FALSE)
+      # t_wb <- as.numeric(b_wb$median)
       
       # REML-corrected sigma2
       # s2_reml <- fw_old$sigma2 * J / (J - K)
       
       # corrected (Woodbury + Edgeworth)
-      b_corr <- bench::mark(
-        fw_corr <<- fit_pfa_woodbury_lam_corr(dat$Y, dat$X, dat$group, K, M = dat$M,
-                                              max_iter = 80, tol = 1e-3, sigma2_init = target,
-                                              verbose = FALSE, estep_max_iter = 100, estep_gtol = 1e-3,
-                                              B_true = NULL,
-                                              corr_max_rel = 0.5, 
-                                              use_lambda_correction = TRUE),
-        iterations = 1, check = FALSE, memory = FALSE)
-      t_corr <- as.numeric(b_corr$median)
+      # b_corr <- bench::mark(
+      #   fw_corr <<- fit_pfa_woodbury_lam_corr(dat$Y, dat$X, dat$group, K, M = dat$M,
+      #                                         max_iter = 80, tol = 1e-3, sigma2_init = target,
+      #                                         verbose = FALSE, estep_max_iter = 100, estep_gtol = 1e-3,
+      #                                         B_true = NULL,
+      #                                         corr_max_rel = 0.5, 
+      #                                         use_lambda_correction = TRUE),
+      #   iterations = 1, check = FALSE, memory = FALSE)
+      # t_corr <- as.numeric(b_corr$median)
       
       # gllvm()
       b_gl <- tryCatch(
@@ -129,31 +129,40 @@ for (J in Js) {
       t_gl <- if (ok) as.numeric(b_gl$median) else NA
       
       # d_base_true <- subspace_dist(fw_base$B, dat$true$B)
-      d_only_true  <- subspace_dist(fw_only$B, dat$true$B)
-      d_corr_true <- subspace_dist(fw_corr$B, dat$true$B)
+      # d_only_true  <- subspace_dist(fw_only$B, dat$true$B)
+      # d_corr_true <- subspace_dist(fw_corr$B, dat$true$B)
       # d_G_true    <- subspace_dist(fw_G$B, dat$true$B)
       # d_Gf_true   <- subspace_dist(fw_G_frz$B, dat$true$B)
       d_gl_true   <- if (ok) subspace_dist(fr$B, dat$true$B) else NA
       
+      # rows <- data.frame(
+      #   J = J, Q = Q, seed = seed,
+      #   method = c("base", "woodbury only", "corrected", "gllvm()"),
+      #   time_s = c(NA, t_wb, t_corr, t_gl),
+      #   sigma2 = c(NA, fw_only$sigma2, fw_corr$sigma2, if (ok) fr$sigma2 else NA),
+      #   d_true = c(NA, d_only_true, d_corr_true, d_gl_true),
+      #   converged = c(NA, fw_only$converged, fw_corr$converged,
+      #                 if (ok) fr$converged else NA),
+      #   log_lik_monotone = c(sapply(list(NA, fw_old, fw_corr), function(f) monotone_diagnostics(f)$monotone), NA),
+      #   stringsAsFactors = FALSE
+      # )
+      
       rows <- data.frame(
         J = J, Q = Q, seed = seed,
-        method = c("base", "woodbury only", "corrected", "gllvm()"),
-        time_s = c(NA, t_wb, t_corr, t_gl),
-        sigma2 = c(NA, fw_only$sigma2, fw_corr$sigma2, if (ok) fr$sigma2 else NA),
-        d_true = c(NA, d_only_true, d_corr_true, d_gl_true),
-        converged = c(NA, fw_only$converged, fw_corr$converged,
-                      if (ok) fr$converged else NA),
-        log_lik_monotone = c(sapply(list(NA, fw_old, fw_corr), function(f) monotone_diagnostics(f)$monotone), NA),
+        method = c("gllvm()"),
+        time_s = c(t_gl),
+        sigma2 = c(if (ok) fr$sigma2 else NA),
+        d_true = c(d_gl_true),
+        converged = c(if (ok) fr$converged else NA),
         stringsAsFactors = FALSE
       )
-      q_results <- rbind(q_results, rows)
+      q_results <- rbind(gllvm_results, rows)
       
       for (i in seq_len(nrow(rows))) {
-        cat(sprintf("%5d %6d %6d | %14s %10.2f %10.4f %10s %8s\n %10s\n",
+        cat(sprintf("%5d %6d %6d | %14s %10.2f %10.4f %10s %8s\n",
                     J, Q, seed, rows$method[i], rows$time_s[i], rows$sigma2[i],
                     if (is.na(rows$d_true[i])) "-" else sprintf("%.4f", rows$d_true[i]),
-                    if (is.na(rows$converged[i])) "-" else ifelse(rows$converged[i], "yes", "NO"),
-                    if (is.na(rows$log_lik_monotone[i])) "-" else ifelse(rows$log_lik_monotone[i], "yes", "NO")))
+                    if (is.na(rows$converged[i])) "-" else ifelse(rows$converged[i], "yes", "NO")))
       }
       cat(sprintf("  J=%d Q=%d seed=%d | true sigma2=%.4f\n", J, Q, seed, dat$true$sigma2))
     }
