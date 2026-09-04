@@ -1,53 +1,62 @@
+install.packages("jsonlite")
+install.packages("languageserver")
+
+install.packages("glmmTMB")
+install.packages("bench")
+install.packages("nnet")
+install.packages("Matrix") # Cholesky decomposition
+
 library(glmmTMB)
 library(bench)
 library(nnet)
 library(Matrix)
 
-# glmmTMB reference fit (without idiosyncratic variance)
-add_offset <- function(long, Y) {
-  tot <- rowSums(Y)                  
-  long$log_total <- log(pmax(tot[as.integer(long$obs)], 1))
-  long
-}
+# # glmmTMB reference fit (without idiosyncratic variance)
+# add_offset <- function(long, Y) {
+#   tot <- rowSums(Y)                  
+#   long$log_total <- log(pmax(tot[as.integer(long$obs)], 1))
+#   long
+# }
 
-fit_pfa_glmmTMB <- function(Y, X, group, K,
-                            covariate_terms = NULL, 
-                            reml = FALSE) {
-  long <- add_offset(build_long(Y, X, group), Y)
+# fit_pfa_glmmTMB <- function(Y, X, group, K,
+#                             covariate_terms = NULL, 
+#                             reml = FALSE) {
+#   long <- add_offset(build_long(Y, X, group), Y)
 
-  rhs_fixed <- "category"
-  if (!is.null(covariate_terms)) rhs_fixed <- paste(rhs_fixed, "+", covariate_terms)
+#   rhs_fixed <- "category"
+#   if (!is.null(covariate_terms)) rhs_fixed <- paste(rhs_fixed, "+", covariate_terms)
   
-  form <- as.formula(
-    paste0("count ~ ", rhs_fixed,
-           " + rr(category + 0 | group, d = ", K, ")")
-  )
+#   form <- as.formula(
+#     paste0("count ~ ", rhs_fixed,
+#            " + rr(category + 0 | group, d = ", K, ")")
+#   )
   
-  glmmTMB(form,
-          data = long,
-          family = poisson(link = "log"),
-          offset = long$log_total,
-          REML = reml)
-}
+#   glmmTMB(form,
+#           data = long,
+#           family = poisson(link = "log"),
+#           offset = long$log_total,
+#           REML = reml)
+# }
 
 extract_loadings <- function(fit) {
-  vc <- VarCorr(fit)$cond$group # Q x Q reduced-rank covariance factor loadings:
+  vc <- VarCorr(fit)$cond$group # Q x Q reduced-rank covariance factor loadings
   # leading-K eigen-decomposition of the rr covariance
   e  <- eigen((vc + t(vc)) / 2, symmetric = TRUE)
-  # eigs_sym accelerate?
+  # eigs_sym accelerate
   K  <- attr(vc, "d"); if (is.null(K)) K <- sum(e$values > 1e-8)
   L  <- e$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(e$values[1:K], 0)), K)
   list(B = L, cov = vc)
 }
 
-# dense multinomial follow the thesis
+# base multinomial model
 row_softmax <- function(eta) { mx <- apply(eta, 1, max); ee <- exp(eta - mx); ee / rowSums(ee) }
 row_logsumexp <- function(eta) { mx <- apply(eta, 1, max); mx + log(rowSums(exp(eta - mx))) }
 
 laplace_lambda_j_dense <- function(Y_j, X_j, M_j, mu, phi, Sigma_inv,
                                   max_iter = 100, estep_gtol = 1e-3, bt_max = 30,
                                   c1 = 1e-4) {
-  N_j <- nrow(Y_j); Q <- ncol(Y_j)
+  N_j <- nrow(Y_j)
+  Q <- ncol(Y_j)
   fixed <- matrix(rep(mu, each = N_j), N_j, Q) + X_j %*% phi
 
   lp <- function(a) {
@@ -71,7 +80,9 @@ laplace_lambda_j_dense <- function(Y_j, X_j, M_j, mu, phi, Sigma_inv,
     dir <- tryCatch(solve(H, g), error = function(e) g * 0.01)  
     gd <- sum(g * dir)                                        
 
-    step <- 1; accepted <- FALSE
+    # Arjimo backtracking line search
+    step <- 1
+    accepted <- FALSE
     for (bt in 1:bt_max) {
       if (lp(lambda + step * dir) >= lp_cur + c1 * step * gd) { accepted <- TRUE; break }
       step <- step * 0.5
@@ -88,7 +99,10 @@ laplace_lambda_j_dense <- function(Y_j, X_j, M_j, mu, phi, Sigma_inv,
   S_hat <- tryCatch({
     Hc <- Cholesky(H)
     S_hat <- solve(Hc, Diagonal(nrow(H)))
-  }, error = function(e) {diag(Q) * 1e-3})
+  }, error = function(e) {
+    warning(sprintf("Cholesky (H) error: %s", conditionMessage(e)))
+    diag(Q) * 1e-3
+  })
   ldS <- -as.numeric(determinant(H, logarithm = TRUE)$modulus)
 
   list(lambda_hat = lambda, S_hat = S_hat, lp_mode = lp_cur,
@@ -102,7 +116,9 @@ estep_dense <- function(J, group, Y, X, M, mu, phi, B, sigma2,
   Sigma_inv <- tryCatch({
     cholSigma <- Cholesky(Sigma)
     solve(cholSigma, Diagonal(Q))
-  }, error = function(e) {diag(Q) / sigma2})
+  }, error = function(e) {
+    warning(sprintf("Cholesky (Sigma) error for sigma2=%.6g: %s", sigma2, conditionMessage(e)))
+    diag(Q) / sigma2})
   ldSigma <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
 
   lambda_hat <- matrix(0, Q, J)
@@ -178,29 +194,54 @@ pois_ridge_irls <- function(X, y, off, lambda, max_iter = 50, tol = 1e-8) {
   as.numeric(beta)
 }
 
-rubin_thayer_spherical <- function(Sigma_obs, K, B_init = NULL,
-                                   sigma2_init = 0.3,
-                                   max_iter = 500, tol = 1e-10) {
-  Q <- nrow(Sigma_obs)
-  if (is.null(B_init)) {
-    sv <- svd(Sigma_obs, nu = K, nv = K)
-    lam <- pmax(sv$d[1:K] - sigma2_init, 0.05)
-    B <- sv$u %*% diag(sqrt(lam), K)
-  } else B <- B_init
-  sigma2 <- max(sigma2_init, 1e-6)
+# # Use glm.fit for Poisson regression with offset
+# pois_glmfit_diag <- function(X, y, off, lambda, max_iter = 50, tol = 1e-8) {
+#   fit <- tryCatch(
+#     suppressWarnings(
+#       glm.fit(x = X, y = y, offset = off,
+#               family = poisson(link = "log"),
+#               control = list(epsilon = tol, maxit = max_iter))
+#     ),
+#     error = function(e) NULL)
+#   if (is.null(fit) || any(!is.finite(fit$coefficients)))
+#     return(list(beta = rep(0, ncol(X)), converged = FALSE, iter = NA_integer_))
+#   list(beta = as.numeric(fit$coefficients),
+#        converged = isTRUE(fit$converged), iter = fit$iter)
+# }
 
-  for (iter in 1:max_iter) {
-    B_old <- B; s_old <- sigma2
-    Sigma <- B %*% t(B) + sigma2 * diag(Q)
-    Si <- tryCatch(solve(Sigma), error = function(e) diag(Q) / sigma2)
-    beta <- t(B) %*% Si                                   # K x Q
-    Theta <- diag(K) - beta %*% B + beta %*% Sigma_obs %*% t(beta)
-    B_new <- Sigma_obs %*% t(beta) %*% solve(Theta)
-    sigma2_new <- max(sum(diag(Sigma_obs - B_new %*% beta %*% Sigma_obs)) / Q,
-                      1e-6)
-    B <- B_new; sigma2 <- sigma2_new
-    if (max(abs(B - B_old)) < tol && abs(sigma2 - s_old) < tol) break
-  }
+# rubin_thayer_spherical <- function(Sigma_obs, K, B_init = NULL,
+#                                    sigma2_init = 0.3,
+#                                    max_iter = 500, tol = 1e-10) {
+#   Q <- nrow(Sigma_obs)
+#   if (is.null(B_init)) {
+#     sv <- svd(Sigma_obs, nu = K, nv = K)
+#     lam <- pmax(sv$d[1:K] - sigma2_init, 0.05)
+#     B <- sv$u %*% diag(sqrt(lam), K)
+#   } else B <- B_init
+#   sigma2 <- max(sigma2_init, 1e-6)
+
+#   for (iter in 1:max_iter) {
+#     B_old <- B; s_old <- sigma2
+#     Sigma <- B %*% t(B) + sigma2 * diag(Q)
+#     Si <- tryCatch(solve(Sigma), error = function(e) diag(Q) / sigma2)
+#     beta <- t(B) %*% Si                                   # K x Q
+#     Theta <- diag(K) - beta %*% B + beta %*% Sigma_obs %*% t(beta)
+#     B_new <- Sigma_obs %*% t(beta) %*% solve(Theta)
+#     sigma2_new <- max(sum(diag(Sigma_obs - B_new %*% beta %*% Sigma_obs)) / Q,
+#                       1e-6)
+#     B <- B_new; sigma2 <- sigma2_new
+#     if (max(abs(B - B_old)) < tol && abs(sigma2 - s_old) < tol) break
+#   }
+#   list(B = B, sigma2 = sigma2)
+# }
+
+# Probability PCA closed form MlE, no iterations, one formula
+ppca <- function(Sigma_obs, K) {
+  Q <- nrow(Sigma_obs)
+  e <- eigen((Sigma_obs + t(Sigma_obs)) / 2, symmetric = TRUE)
+  lam <- pmax(e$values, 0)
+  sigma2 <- max(mean(lam[(K + 1):Q]), 1e-8)
+  B <- e$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(lam[1:K] - sigma2, 0)), K)
   list(B = B, sigma2 = sigma2)
 }
 
@@ -226,8 +267,8 @@ fit_pfa_dense <- function(Y, X, group, K,
       gm[j, ] <- log((gs + 1e-5) / (sum(gs) + Q * 1e-5))
     }
   }
-  gm_c <- sweep(gm, 2, colMeans(gm))                 
-  sv0 <- svd(t(gm_c), nu = K, nv = K)          
+  gm_c <- sweep(gm, 2, colMeans(gm))
+  sv0 <- svd(t(gm_c), nu = K, nv = K)
   B <- sv0$u %*% diag(pmax(sv0$d[1:K] * 0.5, 0.1), K)
   B <- apply_PLT(B)
   sigma2 <- sigma2_init
@@ -239,7 +280,7 @@ fit_pfa_dense <- function(Y, X, group, K,
   for (em in 1:max_iter) {
 
     es <- estep_dense(J, group, Y, X, M, mu, phi, B, sigma2,
-                             max_iter = estep_max_iter, estep_gtol = estep_gtol)
+                      max_iter = estep_max_iter, estep_gtol = estep_gtol)
     lambda_hat <- es$lambda_hat
     S_hat <- es$S_hat
 
@@ -247,13 +288,15 @@ fit_pfa_dense <- function(Y, X, group, K,
       0.5 * es$ld_S_total
 
     mp <- mstep_phi_dense(Y, X, group, lambda_hat, mu, phi,
-                           lambda_phi = lambda_phi)
-    mu <- mp$mu; phi <- mp$phi
+                          lambda_phi = lambda_phi)
+    mu <- mp$mu
+    phi <- mp$phi
 
     S_obs <- tcrossprod(lambda_hat) / J
     for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
-    rt <- rubin_thayer_spherical(S_obs, K,
-                                     B_init = B, sigma2_init = sigma2)
+    # rt <- rubin_thayer_spherical(S_obs, K,
+    #                                  B_init = B, sigma2_init = sigma2)
+    rt <- ppca(S_obs, K)
     B <- apply_PLT(rt$B)
     sigma2 <- rt$sigma2
 
@@ -267,4 +310,111 @@ fit_pfa_dense <- function(Y, X, group, K,
   list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
        lambda_hat = lambda_hat, S_hat = S_hat,
        log_evidence = log_ev[1:em], converged = converged, iterations = em)
+}
+
+fit_pfa_dense_traced <- function(Y, X, group, K,
+                                 M = rowSums(Y),
+                                 max_iter = 60, tol = 1e-4,
+                                 lambda_phi = 0, sigma2_init = 0.3,
+                                 verbose = FALSE,
+                                 estep_max_iter = 100, estep_gtol = 1e-3,
+                                 B_true = NULL) {
+
+  N <- nrow(Y)
+  Q <- ncol(Y)
+  P <- ncol(X)
+  J <- max(group)
+  stopifnot(all(X[, 1] == 1))
+
+  avg_prop <- colMeans(Y / pmax(rowSums(Y), 1))
+  mu <- log(avg_prop + 1e-8); mu <- mu - mean(mu)
+  phi <- matrix(0, P, Q)
+
+  gm <- matrix(0, J, Q)
+  for (j in 1:J) {
+    idx <- which(group == j)
+    if (length(idx) > 0) {
+      gs <- colSums(Y[idx, , drop = FALSE])
+      gm[j, ] <- log((gs + 1e-5) / (sum(gs) + Q * 1e-5))
+    }
+  }
+
+  gm_c <- sweep(gm, 2, colMeans(gm))
+  sv0 <- svd(t(gm_c), nu = K, nv = K)
+  B <- sv0$u %*% diag(pmax(sv0$d[1:K] * 0.5, 0.1), K)
+  B <- apply_PLT(B)
+  sigma2 <- sigma2_init
+
+  log_ev <- numeric(max_iter)
+  sigma2_trace <- numeric(max_iter)
+  monotone_trace <- rep(NA, max_iter)
+  B_dist_trace <- if (!is.null(B_true)) numeric(max_iter) else NULL
+
+  best_iter <- NA_integer_
+  best_log_ev <- -Inf
+  best_state <- NULL
+
+  converged <- FALSE
+  stop_reason <- "max_iter"
+  em <- 0
+
+  for (em in 1:max_iter) {
+
+    es <- estep_dense(J, group, Y, X, M, mu, phi, B, sigma2,
+                      max_iter = estep_max_iter, estep_gtol = estep_gtol)
+    lambda_hat <- es$lambda_hat
+    S_hat <- es$S_hat
+
+    log_ev[em] <- es$lp_total - 0.5 * J * es$log_det_Sigma +
+      0.5 * es$ld_S_total
+
+    monotone_trace[em] <- if (em == 1) TRUE else (log_ev[em] >= log_ev[em - 1])
+
+    mp <- mstep_phi_dense(Y, X, group, lambda_hat, mu, phi,
+                          lambda_phi = lambda_phi)
+    mu <- mp$mu; phi <- mp$phi
+
+    S_obs <- tcrossprod(lambda_hat) / J
+    for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
+    rt <- ppca(S_obs, K)
+    B <- apply_PLT(rt$B)
+    sigma2 <- rt$sigma2
+
+    sigma2_trace[em] <- sigma2
+    if (!is.null(B_true)) B_dist_trace[em] <- subspace_dist(B, B_true)
+
+    if (log_ev[em] > best_log_ev) {
+      best_log_ev <- log_ev[em]
+      best_iter <- em
+      best_state <- list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
+                         lambda_hat = lambda_hat, S_hat = S_hat)
+    }
+
+    if (verbose) {
+      bd_str <- if (!is.null(B_true)) sprintf("  B_dist = %.4f", B_dist_trace[em]) else ""
+      cat(sprintf("iter %3d  log_ev = %.4f  sigma2 = %.4f  mono = %s%s\n",
+                  em, log_ev[em], sigma2, monotone_trace[em], bd_str))
+    }
+
+    if (em > 1 &&
+        abs(log_ev[em] - log_ev[em - 1]) < tol) { converged <- TRUE; stop_reason <- "tol"; break }
+  }
+
+  em_final <- em
+  is_monotone <- all(monotone_trace[1:em_final])
+  first_decrease_iter <- if (!is_monotone) which(!monotone_trace[1:em_final])[1] else NA_integer_
+
+  list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
+       lambda_hat = lambda_hat, S_hat = S_hat,
+       log_evidence = log_ev[1:em_final],
+       converged = converged, iterations = em_final,
+       stop_iter = em_final, stop_reason = stop_reason,
+       sigma2_trace = sigma2_trace[1:em_final],
+       monotone_trace = monotone_trace[1:em_final],
+       is_monotone = is_monotone,
+       first_decrease_iter = first_decrease_iter,
+       B_dist_trace = if (!is.null(B_true)) B_dist_trace[1:em_final] else NULL,
+       best_iter = best_iter,
+       best_log_ev = best_log_ev,
+       best = best_state)
 }

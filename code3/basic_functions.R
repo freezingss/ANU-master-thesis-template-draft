@@ -90,4 +90,4 @@ summarize_fit_traced <- function(fit, Q, K, J, N_per_group, seed, max_iter, tol)
   )
 }
 
-# 
+#

@@ -1,5 +1,5 @@
 library(glmmTMB)
-library(bench)
+library(bench) # timing
 
 stopifnot(packageVersion("glmmTMB") >= "1.1.8")
 
@@ -62,40 +62,34 @@ fit_glmmTMB_ref <- function(Y, X, group, K, time_limit = Inf, verbose = FALSE) {
   list(B = L, sigma2 = sigma2_hat, time = el, ok = TRUE, converged = conv, error = NA_character_)
 }
 
-fit_pfa_woodbury_G_wrapper <- function(Y, X, group, K, M, max_iter = 80, fix_sigma2 = NULL) {
-  fit_pfa_woodbury_G(Y, X, group, K, M = M, max_iter = max_iter, tol = 1e-8,
-                      sigma2_init = 0.3, verbose = FALSE, fix_sigma2 = fix_sigma2)
-}
+# # Monotone Check
+# is_monotone_loglik <- function(fit) {
+#   all(diff(fit$log_evidence) >= 0)
+# }
 
-# Monotone Check
-is_monotone_loglik <- function(fit) {
-  all(diff(fit$log_evidence) >= 0)
-}
-
-monotone_diagnostics <- function(fit) {
-  d <- diff(fit$log_evidence)
-  list(monotone = all(d >= 0), n_decreasing = sum(d < 0),
-       first_decrease_iter = if (any(d < 0)) which(d < 0)[1] + 1 else NA_integer_)
-}
+# monotone_diagnostics <- function(fit) {
+#   d <- diff(fit$log_evidence)
+#   list(monotone = all(d >= 0), n_decreasing = sum(d < 0),
+#        first_decrease_iter = if (any(d < 0)) which(d < 0)[1] + 1 else NA_integer_)
+# }
 
 # RUN CODE
-Js    <- c(100, 150)
-Qs    <- c(50, 100, 150)
-# Qs <- c(50)
-seeds <- 1:3
-# seeds <- c(1,3) # Observed severe unstable for old woodbury + PME
+Js    <- c(100)
+Qs    <- c(50, 100)
+seeds <- 1:2
 K <- 2
 Nj <- 15
 
 q_results <- data.frame(
   J = integer(), Q = integer(), seed = integer(), method = character(),
-  time_s = numeric(), sigma2 = numeric(), d_true = numeric(), converged = logical(),
-  log_lik_monotone = logical(),
+  time_s = numeric(), sigma2 = numeric(), d_true = numeric(), 
+  converged = logical(), log_lik_monotone = logical(),
   stringsAsFactors = FALSE
 )
 
 cat(sprintf("%5s %6s %6s | %14s %10s %10s %10s %8s\n %10s\n",
-            "J", "Q", "seed", "method", "time(s)", "sigma2", "d vs true", "conv?", "LL mono?"))
+            "J", "Q", "seed", "method", "time(s)", "sigma2", "d vs true", 
+            "conv?", "LL mono?"))
 
 for (J in Js) {
   for (Q in Qs) {

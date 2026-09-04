@@ -1,6 +1,3 @@
-# 01092026: drop the design for PME simplification, use functions in pfa_woodbury_only.R
-source("pfa_woodbury_only.R") # estep 
-
 correct_lambda_edgeworth <- function(Q, J, lambda_hat, S_hat, Y, X, group, M, mu, phi) {
   
   # cat("length(S_hat)=", length(S_hat), " J=", J, " Q=", Q, "\n")
@@ -47,7 +44,7 @@ fit_pfa_woodbury_lam_corr <- function(Y, X, group, K,
                                       estep_max_iter = 100, estep_gtol = 1e-3,
                                       B_true = NULL,
                                       use_lambda_correction = FALSE,
-                                      corr_max_rel = 0.5, 
+                                      corr_max_rel = 0.5,
                                       fix_sigma2 = NULL,
                                       freeze_tol = 1e-5, freeze_patience = 3,
                                       use_aitken = FALSE, aitken_window = 3, aitken_tol = 1e-4) {
@@ -57,7 +54,7 @@ fit_pfa_woodbury_lam_corr <- function(Y, X, group, K,
   P <- ncol(X)
   J <- max(group)
   stopifnot(all(X[, 1] == 1))
-  
+
   # Sigma setup: no constrain, auto and fixed number
   stopifnot(is.null(fix_sigma2) || identical(fix_sigma2, "auto") || is.numeric(fix_sigma2))
 
@@ -79,7 +76,7 @@ fit_pfa_woodbury_lam_corr <- function(Y, X, group, K,
   sv0 <- svd(t(gm_c), nu = K, nv = K)
   B <- sv0$u %*% diag(pmax(sv0$d[1:K] * 0.5, 0.1), K)
   B <- apply_PLT(B)
-  
+
   sigma2 <- sigma2_init
 
   log_ev <- numeric(max_iter)
@@ -95,13 +92,16 @@ fit_pfa_woodbury_lam_corr <- function(Y, X, group, K,
   sigma2_freeze_iter <- NA_integer_
   sigma2_freeze_value <- NA_real_
   freeze_stable_count <- 0
+
   if (is.numeric(fix_sigma2)) {
     sigma2 <- fix_sigma2
     sigma2_is_frozen <- TRUE
     sigma2_freeze_iter <- 0L
     sigma2_freeze_value <- fix_sigma2
+
     if (verbose) message(sprintf("sigma2 frozen from iter 0 at %.4f", fix_sigma2))
   }
+  
   aitken_extrapolate <- function(x3) {
     d <- x3[3] - 2 * x3[2] + x3[1]
     if (!is.finite(d) || abs(d) < 1e-12) return(NA_real_)
@@ -155,7 +155,8 @@ fit_pfa_woodbury_lam_corr <- function(Y, X, group, K,
         message(sprintf("iter %d: %d factor eigenvalue(s) below frozen sigma2 - clipped", em, sum(lamK < sigma2)))
       B <- apply_PLT(Uk %*% diag(sqrt(pmax(lamK - sigma2, 0)), K))
     } else {
-      rt <- rubin_thayer_wbonly(S_obs, K, B_init = B, sigma2_init = sigma2)
+      # rt <- rubin_thayer_wbonly(S_obs, K, B_init = B, sigma2_init = sigma2)
+      rt <- ppca_wbonly(S_obs, K)
       B <- apply_PLT(rt$B)
       sigma2 <- rt$sigma2
     }
