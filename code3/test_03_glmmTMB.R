@@ -1,3 +1,6 @@
+setwd("/Users/u8008308/Documents/ANU-master-thesis-template-draft/code3")
+getwd()
+
 library(glmmTMB)
 library(bench) # timing
 
@@ -74,9 +77,9 @@ fit_glmmTMB_ref <- function(Y, X, group, K, time_limit = Inf, verbose = FALSE) {
 # }
 
 # RUN CODE
-Js    <- c(100)
-Qs    <- c(50, 100)
-seeds <- 1:2
+Js    <- c(75)
+Qs    <- c(100)
+seeds <- 1:5
 K <- 2
 Nj <- 15
 
@@ -181,7 +184,8 @@ for (J in Js) {
         d_true = c(d_only_true, d_corr_true, d_gt_true),
         converged = c(fw_only$converged, fw_corr$converged,
                       if (ok) fr$converged else NA),
-        log_lik_monotone = c(sapply(list(fw_only, fw_corr), function(f) monotone_diagnostics(f)$monotone), NA),
+        log_lik_monotone = c(fw_only$log_lik_monotone, fw_corr$log_lik_monotone,
+                             if (ok) fr$log_lik_monotone else NA),
         stringsAsFactors = FALSE
       )
       q_results <- rbind(q_results, rows)
