@@ -1,13 +1,6 @@
 # Results Storage
 
-# test_06_Heywood_case
-result_06_01 <- readRDS("test_06_part1_results.rds")
-result_06_01
-result_06_02 <- readRDS("test_06_part2_results.rds")
-result_06_02
-result_06_03 <- readRDS("test_06_part3_results.rds")
-result_06_03
-result_06_04 <- readRDS("test_06_part3_j_needed.rds")
-result_06_04
-result_06_05 <- readRDS("test_06_part3_exponent_fit.rds")
-result_06_05
+# RESULTS_FILE <- "test_v2_freezed+eigen_results_v1.rds" from test_v2_freezed+eigen.R
+# compare three models: base/lambda_correction/combo (lambda_correction + freezed sigma2) and give the output
+results1 <- readRDS("test_v2_freezed+eigen_results_v1.rds")
+summary(results1)
