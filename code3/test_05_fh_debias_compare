@@ -4,6 +4,7 @@ suppressMessages(library(Matrix))
 source("basic_functions.R")
 source("pfa_base_multinomial.R")
 source("pfa_fh_em.R")
+source("pfa_woodbury_only.R")
 
 simulate_data <- function(Q, K, J, N_per_group, P = 2, sigma2 = 0.3, seed = 1, Mtot_range = c(200, 400)) {
   set.seed(seed)
@@ -71,10 +72,7 @@ fit_generic <- function(Y, X, group, K, mode = c("std", "iso", "debias"),
     } else {
       S_obs <- tcrossprod(lambda_hat) / J
       for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
-      if (mode == "std") {
-        # rt <- rubin_thayer_spherical(S_obs, K, B_init = B, sigma2_init = sigma2)
-        fit <- ppca(S_obs, K) # rubin-thayer spherical
-      }
+      fit <- ppca(S_obs, K)
     }
     B <- apply_PLT(fit$B); sigma2 <- fit$sigma2
     tau2 <- sum(diag(tcrossprod(B))) / Q + sigma2
