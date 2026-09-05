@@ -1,0 +1,119 @@
+setwd("~/ANU-master-thesis-template-draft/code3")
+
+suppressMessages(library(Matrix))
+source("basic_functions.R")
+source("pfa_base_multinomial.R")
+source("pfa_fh_em.R")
+
+simulate_data <- function(Q, K, J, N_per_group, P = 2, sigma2 = 0.3, seed = 1, Mtot_range = c(200, 400)) {
+  set.seed(seed)
+  mu_true <- rnorm(Q, 0, 0.5)
+  mu_true <- mu_true - mean(mu_true)
+  B_true <- apply_PLT(matrix(rnorm(Q * K, 0, 0.6), Q, K))
+  phi_true <- matrix(0, P, Q)
+  if (P > 1) for (p in 2:P) phi_true[p, ] <- rnorm(Q, 0, 0.3)
+  N <- J * N_per_group
+  group <- rep(1:J, each = N_per_group)
+  X <- cbind(1, matrix(rnorm(N * (P - 1)), N, P - 1))
+  L <- t(chol(B_true %*% t(B_true) + sigma2 * diag(Q)))
+  lambda_true <- L %*% matrix(rnorm(Q * J), Q, J)
+  Y <- matrix(0, N, Q)
+  Mi <- sample(Mtot_range[1]:Mtot_range[2], N, replace = TRUE)
+  for (i in 1:N) {
+    j <- group[i]
+    eta <- mu_true + as.numeric(X[i, ] %*% phi_true) + lambda_true[, j]
+    p <- exp(eta - max(eta)); p <- p / sum(p)
+    Y[i, ] <- rmultinom(1, Mi[i], p)
+  }
+  list(Y = Y, X = X, group = group, mu_true = mu_true, phi_true = phi_true,
+       B_true = B_true, sigma2_true = sigma2, lambda_true = lambda_true)
+}
+
+debias_oneshot <- function(lambda_hat, S_hat, tau2, K, ridge = 1e-3) {
+  bs <- fhem_backsolve(lambda_hat, S_hat, tau2, ridge = ridge)
+  Q <- nrow(lambda_hat); J <- ncol(lambda_hat)
+  Sig <- matrix(0, Q, Q)
+  for (j in 1:J) Sig <- Sig + tcrossprod(bs$lt[[j]]) - solve(bs$Fl[[j]])
+  ppca_closed(Sig / J, K)
+}
+
+init_params <- function(Y, X, group, K) {
+  Q <- ncol(Y); P <- ncol(X); J <- max(group)
+  avg_prop <- colMeans(Y / pmax(rowSums(Y), 1))
+  mu <- log(avg_prop + 1e-8); mu <- mu - mean(mu)
+  phi <- matrix(0, P, Q)
+  gm <- matrix(0, J, Q)
+  for (j in 1:J) {
+    idx <- which(group == j)
+    gs <- colSums(Y[idx, , drop = FALSE])
+    gm[j, ] <- log((gs + 1e-5) / (sum(gs) + Q * 1e-5))
+  }
+  gm_c <- sweep(gm, 2, colMeans(gm))
+  sv0 <- svd(t(gm_c), nu = K, nv = K)
+  B <- apply_PLT(sv0$u %*% diag(pmax(sv0$d[1:K] * 0.5, 0.1), K))
+  list(mu = mu, phi = phi, B = B, sigma2 = 0.3)
+}
+
+fit_generic <- function(Y, X, group, K, mode = c("std", "iso", "debias"),
+                        init, max_iter = 60, ridge = 1e-3, verbose = FALSE) {
+  mode <- match.arg(mode)
+  Q <- ncol(Y); J <- max(group); M <- rowSums(Y)
+  mu <- init$mu; phi <- init$phi; B <- init$B; sigma2 <- init$sigma2
+  tau2 <- sum(diag(tcrossprod(B))) / Q + sigma2
+  for (em in 1:max_iter) {
+    prior_B <- if (mode == "std") B else matrix(0, Q, K)
+    prior_sigma2 <- if (mode == "std") sigma2 else tau2
+    es <- estep_dense(J, group, Y, X, M, mu, phi, prior_B, prior_sigma2)
+    lambda_hat <- es$lambda_hat; S_hat <- es$S_hat
+    mp <- mstep_phi_dense(Y, X, group, lambda_hat, mu, phi); mu <- mp$mu; phi <- mp$phi
+    if (mode == "debias") {
+      fit <- debias_oneshot(lambda_hat, S_hat, tau2, K, ridge = ridge)
+    } else {
+      S_obs <- tcrossprod(lambda_hat) / J
+      for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
+      if (mode == "std") {
+        # rt <- rubin_thayer_spherical(S_obs, K, B_init = B, sigma2_init = sigma2)
+        fit <- ppca(S_obs, K) # rubin-thayer spherical
+      }
+    }
+    B <- apply_PLT(fit$B); sigma2 <- fit$sigma2
+    tau2 <- sum(diag(tcrossprod(B))) / Q + sigma2
+    if (verbose) cat(sprintf("[%-6s] iter %2d  sigma2=%.4f\n", mode, em, sigma2))
+  }
+  list(mu = mu, phi = phi, B = B, sigma2 = sigma2, tau2 = tau2)
+}
+
+run_comparison <- function(Q, K, J, N_per_group, seed, max_iter = 60, fhem_outer = 15) {
+  d <- simulate_data(Q, K, J, N_per_group, seed = seed)
+  Y <- d$Y; X <- d$X; group <- d$group; M <- rowSums(Y)
+  init <- init_params(Y, X, group, K)
+
+  estep_iso_fn <- function(mu, phi, tau2) {
+    es <- estep_dense(J, group, Y, X, M, mu, phi, matrix(0, Q, K), tau2)
+    list(lambda_hat = es$lambda_hat, S_hat = es$S_hat)
+  }
+  mstep_phi_fn <- function(lambda_hat, mu, phi) mstep_phi_dense(Y, X, group, lambda_hat, mu, phi)
+
+  fit_std <- fit_generic(Y, X, group, K, "std", init, max_iter = max_iter)
+  fit_iso <- fit_generic(Y, X, group, K, "iso", init, max_iter = max_iter)
+  fit_db <- fit_generic(Y, X, group, K, "debias", init, max_iter = max_iter)
+  fit_fh <- fit_fhem(K, estep_iso_fn, mstep_phi_fn, apply_PLT_fn = apply_PLT,
+                     mu0 = init$mu, phi0 = init$phi, B0 = init$B, sigma2_0 = init$sigma2,
+                     max_iter = fhem_outer, verbose = FALSE)
+
+  ests <- list(std = fit_std, iso = fit_iso, debias = fit_db, fhem = fit_fh)
+  res <- data.frame(
+    method = names(ests),
+    sigma2 = sapply(ests, function(f) f$sigma2),
+    d_true = sapply(ests, function(f) subspace_dist(f$B, d$B_true)),
+    tucker = sapply(ests, function(f) tucker_congruence(f$B, d$B_true)$mean)
+  )
+  cat(sprintf("\n=== Q=%d K=%d J=%d N_per_group=%d seed=%d  (sigma2_true=%.2f) ===\n",
+              Q, K, J, N_per_group, seed, d$sigma2_true))
+  print(res, row.names = FALSE, digits = 4)
+  invisible(res)
+}
+
+set.seed(0)
+run_comparison(Q = 20, K = 2, J = 30, N_per_group = 8, seed = 1, max_iter = 15, fhem_outer = 8)
+run_comparison(Q = 20, K = 2, J = 30, N_per_group = 8, seed = 2, max_iter = 15, fhem_outer = 8)

@@ -1,5 +1,6 @@
-install.packages("jsonlite")
+# For VSC R language server
 install.packages("languageserver")
+install.packages("jsonlite")
 
 install.packages("glmmTMB")
 install.packages("bench")
