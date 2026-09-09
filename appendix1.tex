@@ -1,0 +1,284 @@
+\appendix
+
+\chapter{Appendix}
+
+\section{Proofs of Rubin-Taylor EM Factors}
+
+
+\section{Proofs for Woodbury Simplification}
+\label{app:woodbury-proofs}
+
+We keep the group fixed and drop the subscript $j$, as in the main text. Recall $\eta_{iq}(\bm{\lambda})=(\text{terms not involving }\bm{\lambda})+\lambda_{q}$, so $\partial\eta_{iq}/\partial\lambda_{r}=\delta_{qr}$, and $p_{iq}(\bm{\lambda})$ is the softmax of $\bm{\eta}_{i}(\bm{\lambda})$.
+
+\begin{proof}[Proof of Lemma~\ref{lem:score-match}]
+Differentiating \eqref{eq:poisson-surrogate} in $\bm{\lambda}$ with $\bm{\xi}$ held fixed gives $\big(\nabla_{\bm{\lambda}}h_{P}(\bm{\lambda},\bm{\xi})\big)_{r}=\sum_{i\in I_{j}}\big[y_{ir}-\exp(\eta_{ir}(\bm{\lambda})+\xi_{i})\big]-(\bm{\Sigma}^{-1}\bm{\lambda})_{r}$. At $\bm{\xi}=\bm{\xi}(\bm{\lambda})$, the profiling identity $\exp(\eta_{iq}(\bm{\lambda})+\xi_{i}(\bm{\lambda}))=y_{ij\cdot}p_{iq}(\bm{\lambda})$ turns this into $\sum_{i\in I_{j}}\big[y_{ir}-y_{ij\cdot}p_{ir}(\bm{\lambda})\big]-(\bm{\Sigma}^{-1}\bm{\lambda})_{r}$, which is exactly $\big(\nabla h(\bm{\lambda})\big)_{r}$ by the same differentiation applied to the true multinomial log-posterior.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:gamma-neg-def}]
+Fix $\bm{\lambda}$ and drop it from the notation. Since $d_{q}\geq0$ for every $q$, $\tilde{\mathbf{D}}=\operatorname{diag}(\mathbf{d}+\sigma^{-2}\mathbf{1}_{Q})\succeq\sigma^{-2}\mathbf{I}_{Q}$, so $\tilde{\mathbf{D}}^{-1}\preceq\sigma^{2}\mathbf{I}_{Q}$ and $\mathbf{B}^{\top}\tilde{\mathbf{D}}^{-1}\mathbf{B}\preceq\sigma^{2}\mathbf{B}^{\top}\mathbf{B}$. Using $\mathbf{M}_{K}=\mathbf{I}_{K}+\sigma^{-2}\mathbf{B}^{\top}\mathbf{B}$,
+\begin{equation}
+    -\bm{\Gamma}-\sigma^{4}\mathbf{I}_{K}=\sigma^{4}\mathbf{M}_{K}-\mathbf{B}^{\top}\tilde{\mathbf{D}}^{-1}\mathbf{B}-\sigma^{4}\mathbf{I}_{K}=\sigma^{2}\mathbf{B}^{\top}\mathbf{B}-\mathbf{B}^{\top}\tilde{\mathbf{D}}^{-1}\mathbf{B}=\mathbf{B}^{\top}\big(\sigma^{2}\mathbf{I}_{Q}-\tilde{\mathbf{D}}^{-1}\big)\mathbf{B}.
+    \label{eq:gamma-gap}
+\end{equation}
+Some observation has $y_{ij\cdot}>0$, and every softmax probability is strictly positive, so $d_{q}>0$ for every $q$, hence $\tilde{d}_{q}>\sigma^{-2}$ and $\sigma^{2}-\tilde{d}_{q}^{-1}>0$ for every $q$; thus $\sigma^{2}\mathbf{I}_{Q}-\tilde{\mathbf{D}}^{-1}$ is diagonal with every entry strictly positive, so it is positive definite. Since $\mathbf{B}$ has full column rank $K$, $\mathbf{B}\mathbf{v}\neq\bm{0}$ for every $\mathbf{v}\neq\bm{0}$, so the right side of \eqref{eq:gamma-gap} is positive definite: for $\mathbf{v}\neq\bm{0}$, $\mathbf{v}^{\top}\mathbf{B}^{\top}(\sigma^{2}\mathbf{I}_{Q}-\tilde{\mathbf{D}}^{-1})\mathbf{B}\mathbf{v}>0$ because $\mathbf{B}\mathbf{v}\neq\bm{0}$ and $\sigma^{2}\mathbf{I}_{Q}-\tilde{\mathbf{D}}^{-1}\succ0$. Hence $-\bm{\Gamma}-\sigma^{4}\mathbf{I}_{K}\succ\bm{0}$, which is the claim.
+\end{proof}
+
+\begin{proof}[Proof of Lemma~\ref{lem:global-curvature-bounds}]
+Fix $\bm{\lambda}$. For any probability vector $\bm{p}\in\Delta^{Q-1}$ and any unit vector $\mathbf{x}\in\mathbb{R}^{Q}$, $\mathbf{x}^{\top}(\operatorname{diag}(\bm{p})-\bm{p}\bm{p}^{\top})\mathbf{x}=\sum_{q}p_{q}x_{q}^{2}-\big(\sum_{q}p_{q}x_{q}\big)^{2}=\operatorname{Var}_{q\sim\bm{p}}(x_{q})\leq\mathbb{E}_{q\sim\bm{p}}[x_{q}^{2}]\leq\max_{q}x_{q}^{2}\leq\|\mathbf{x}\|^{2}=1$, so $\lambda_{\max}(\operatorname{diag}(\bm{p})-\bm{p}\bm{p}^{\top})\leq1$ for every probability vector $\bm{p}$, with no dependence on $\bm{\lambda}$ or on $Q$. The likelihood part of $\mathbf{H}(\bm{\lambda})$ is $\sum_{i\in I_{j}}y_{ij\cdot}(\operatorname{diag}(\bm{p}_{i})-\bm{p}_{i}\bm{p}_{i}^{\top})$, a sum of positive semi-definite terms, so it is itself positive semi-definite and, by subadditivity of the largest eigenvalue for symmetric matrices, its largest eigenvalue is at most $\sum_{i\in I_{j}}y_{ij\cdot}\cdot1=N_{j}$. Adding the constant prior term $\bm{\Sigma}^{-1}$, and using $\bm{0}\preceq(\text{likelihood part})\preceq N_{j}\mathbf{I}_{Q}$, gives $\bm{\Sigma}^{-1}\preceq\mathbf{H}(\bm{\lambda})\preceq(\lambda_{\max}(\bm{\Sigma}^{-1})+N_{j})\mathbf{I}_{Q}$, and since $\bm{\Sigma}^{-1}\succeq\lambda_{\min}(\bm{\Sigma}^{-1})\mathbf{I}_{Q}$, this is $\mu_{0}\mathbf{I}_{Q}\preceq\mathbf{H}(\bm{\lambda})\preceq L_{0}\mathbf{I}_{Q}$. For $\mathbf{H}_{P}(\bm{\lambda})=\operatorname{diag}(\mathbf{d}(\bm{\lambda}))+\bm{\Sigma}^{-1}$ of \eqref{eq:HP-diagonal}, each $d_{q}(\bm{\lambda})=\sum_{i}y_{ij\cdot}p_{iq}(\bm{\lambda})$ satisfies $0\leq d_{q}(\bm{\lambda})\leq\sum_{i}y_{ij\cdot}=N_{j}$ since $p_{iq}\in[0,1]$, so $\bm{0}\preceq\operatorname{diag}(\mathbf{d}(\bm{\lambda}))\preceq N_{j}\mathbf{I}_{Q}$, and the same two-sided bound follows with the same constants $\mu_{0},L_{0}$. Neither bound restricts $\bm{\lambda}$ to any subset of $\mathbb{R}^{Q}$. Global $\mu_{0}$-strong concavity gives $h(\bm{\lambda})\to-\infty$ as $\|\bm{\lambda}\|\to\infty$ at least quadratically, so $h$ is coercive, its super-level sets are bounded and closed, hence compact, and a continuous coercive strictly concave function attains a unique global maximum; the same argument applies to $h_{P}(\cdot,\bm{\xi}(\bm{\lambda}))$ for fixed profiling point $\bm{\lambda}$, since it too is $\mu_{0}$-strongly concave.
+\end{proof}
+
+\begin{proof}[Proof of Lemma~\ref{lem:ascent-angle}]
+By Lemma~\ref{lem:global-curvature-bounds}, $\mathbf{H}_{P}(\bm{\lambda})\succ\bm{0}$ with spectrum in $[\mu_{0},L_{0}]$, so $\mathbf{H}_{P}(\bm{\lambda})^{-1}$ has spectrum in $[L_{0}^{-1},\mu_{0}^{-1}]$. For $\mathbf{g}\neq\bm{0}$, $\mathbf{g}^{\top}\Delta\bm{\lambda}=\mathbf{g}^{\top}\mathbf{H}_{P}(\bm{\lambda})^{-1}\mathbf{g}\geq L_{0}^{-1}\|\mathbf{g}\|^{2}>0$, which is the first claim, and $\|\Delta\bm{\lambda}\|=\|\mathbf{H}_{P}(\bm{\lambda})^{-1}\mathbf{g}\|\leq\mu_{0}^{-1}\|\mathbf{g}\|$. Hence $\dfrac{\mathbf{g}^{\top}\Delta\bm{\lambda}}{\|\mathbf{g}\|\|\Delta\bm{\lambda}\|}\geq\dfrac{L_{0}^{-1}\|\mathbf{g}\|^{2}}{\mu_{0}^{-1}\|\mathbf{g}\|^{2}}=\dfrac{\mu_{0}}{L_{0}}$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:mode-convergence}]
+If $\mathbf{g}^{(t)}=\bm{0}$ for some $t$, then $\bm{\lambda}^{(t)}=\hat{\bm{\lambda}}$ by strict concavity and the claim holds trivially, so assume $\mathbf{g}^{(t)}\neq\bm{0}$ for every $t$.
+
+\noindent\textbf{Step 1 (step size is bounded below).} By Lemma~\ref{lem:global-curvature-bounds}, $\nabla h$ is $L_{0}$-Lipschitz on all of $\mathbb{R}^{Q}$, so for every $\bm{\lambda}$, every direction $\mathbf{d}$ and every $s\geq0$,
+\begin{equation}
+    h(\bm{\lambda}+s\mathbf{d})\geq h(\bm{\lambda})+s\nabla h(\bm{\lambda})^{\top}\mathbf{d}-\frac{L_{0}s^{2}}{2}\|\mathbf{d}\|^{2},
+    \label{eq:quad-lower-bound}
+\end{equation}
+with no restriction on $\bm{\lambda}+s\mathbf{d}$, since the bound is global. Comparing \eqref{eq:quad-lower-bound} at $\bm{\lambda}=\bm{\lambda}^{(t)}$, $\mathbf{d}=\Delta\bm{\lambda}^{(t)}$ with the Armijo condition \eqref{eq:armijo} shows the Armijo condition holds whenever $s\leq\frac{2(1-c_{1})\mathbf{g}^{(t)\top}\Delta\bm{\lambda}^{(t)}}{L_{0}\|\Delta\bm{\lambda}^{(t)}\|^{2}}=:s^{*}_{t}$. Backtracking from $s=1$ by factor $\rho$ therefore accepts $s^{(t)}\geq\min\{1,\rho s^{*}_{t}\}$: either $s^{(t)}=1$, or the previously rejected trial $s^{(t)}/\rho$ exceeded $s^{*}_{t}$, giving $s^{(t)}>\rho s^{*}_{t}$. By Lemma~\ref{lem:ascent-angle}, $\mathbf{g}^{(t)\top}\Delta\bm{\lambda}^{(t)}/\|\Delta\bm{\lambda}^{(t)}\|^{2}\geq\mu_{0}^{2}/L_{0}$, using $\mathbf{g}^{\top}\Delta\bm{\lambda}\geq L_{0}^{-1}\|\mathbf{g}\|^{2}$ and $\|\Delta\bm{\lambda}\|\leq\mu_{0}^{-1}\|\mathbf{g}\|$, so
+\begin{equation}
+    s^{(t)}\geq s_{\min}:=\min\left\{1,\frac{2\rho(1-c_{1})\mu_{0}^{2}}{L_{0}^{2}}\right\}>0,
+    \label{eq:smin}
+\end{equation}
+uniformly in $t$, and in particular backtracking terminates after finitely many steps.
+
+\noindent\textbf{Step 2 (per-step ascent).} By \eqref{eq:armijo}, \eqref{eq:smin} and $\mathbf{g}^{(t)\top}\Delta\bm{\lambda}^{(t)}\geq L_{0}^{-1}\|\mathbf{g}^{(t)}\|^{2}$,
+\begin{equation}
+    h(\bm{\lambda}^{(t+1)})-h(\bm{\lambda}^{(t)})\geq c_{1}s^{(t)}\mathbf{g}^{(t)\top}\Delta\bm{\lambda}^{(t)}\geq\gamma\|\mathbf{g}^{(t)}\|^{2},\qquad\gamma:=\frac{c_{1}s_{\min}}{L_{0}}.
+    \label{eq:per-step-ascent}
+\end{equation}
+The sequence $h(\bm{\lambda}^{(t)})$ is therefore non-decreasing and bounded above by $h(\hat{\bm{\lambda}})$.
+
+\noindent\textbf{Step 3 (Polyak--Łojasiewicz recursion).} $\mu_{0}$-strong concavity gives, for every $\bm{\lambda},\mathbf{y}$, $h(\mathbf{y})\leq h(\bm{\lambda})+\nabla h(\bm{\lambda})^{\top}(\mathbf{y}-\bm{\lambda})-\frac{\mu_{0}}{2}\|\mathbf{y}-\bm{\lambda}\|^{2}$. Maximizing the right side over $\mathbf{y}$, attained at $\mathbf{y}=\bm{\lambda}+\nabla h(\bm{\lambda})/\mu_{0}$, and using $h(\hat{\bm{\lambda}})=\sup_{\mathbf{y}}h(\mathbf{y})$, gives the Polyak--Łojasiewicz inequality
+\begin{equation}
+    h(\hat{\bm{\lambda}})-h(\bm{\lambda})\leq\frac{1}{2\mu_{0}}\|\nabla h(\bm{\lambda})\|^{2}.
+    \label{eq:PL}
+\end{equation}
+Let $\delta_{t}:=h(\hat{\bm{\lambda}})-h(\bm{\lambda}^{(t)})\geq0$. Combining the ascent of \eqref{eq:per-step-ascent} with \eqref{eq:PL} applied at $\bm{\lambda}^{(t)}$, which gives $\|\mathbf{g}^{(t)}\|^{2}\geq2\mu_{0}\delta_{t}$,
+\begin{equation}
+    \delta_{t+1}=\delta_{t}-\big[h(\bm{\lambda}^{(t+1)})-h(\bm{\lambda}^{(t)})\big]\leq\delta_{t}-\gamma\|\mathbf{g}^{(t)}\|^{2}\leq\delta_{t}-2\gamma\mu_{0}\delta_{t}=(1-\kappa)\delta_{t},\qquad\kappa:=2\gamma\mu_{0}=\frac{2c_{1}s_{\min}\mu_{0}}{L_{0}}.
+    \label{eq:pl-recursion}
+\end{equation}
+Since $\delta_{t}\geq0$ and $\gamma,\mu_{0}>0$ with $\gamma\leq1/(2\mu_{0})$ by \eqref{eq:PL} applied to \eqref{eq:per-step-ascent} at a stationary comparison, $\kappa\in(0,1]$, and $\delta_{t}\leq(1-\kappa)^{t}\delta_{0}$ follows by induction, which is the first bound of \eqref{eq:linear-rate}.
+
+\noindent\textbf{Step 4 (distance to the maximizer).} $\mu_{0}$-strong concavity at $\bm{\lambda}=\hat{\bm{\lambda}}$, $\mathbf{y}=\bm{\lambda}^{(t)}$, using $\nabla h(\hat{\bm{\lambda}})=\bm{0}$, gives $h(\bm{\lambda}^{(t)})\leq h(\hat{\bm{\lambda}})-\frac{\mu_{0}}{2}\|\hat{\bm{\lambda}}-\bm{\lambda}^{(t)}\|^{2}$, that is $\frac{\mu_{0}}{2}\|\hat{\bm{\lambda}}-\bm{\lambda}^{(t)}\|^{2}\leq\delta_{t}\leq(1-\kappa)^{t}\delta_{0}$, and rearranging gives the second bound of \eqref{eq:linear-rate}.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:hessian-diff}]
+Subtract \eqref{eq:HP-diagonal} from \eqref{eq:true-hessian}: the diagonal terms $\operatorname{diag}(\mathbf{d}(\bm{\lambda}))=\operatorname{diag}\big(\sum_{i}y_{ij\cdot}\bm{p}_{i}\big)$ and the prior precision $\bm{\Sigma}^{-1}$ are common to both and cancel, leaving $\mathbf{H}(\bm{\lambda})-\mathbf{H}_{P}(\bm{\lambda})=-\sum_{i\in I_{j}}y_{ij\cdot}\bm{p}_{i}\bm{p}_{i}^{\top}$, which rearranges to the stated identity. Each summand $y_{ij\cdot}\bm{p}_{i}\bm{p}_{i}^{\top}$ is a nonnegative scalar times a rank-one outer product, hence positive semi-definite of rank at most one, so the sum over $I_{j}$ is positive semi-definite of rank at most $|I_{j}|$. This gives $\mathbf{H}_{P}(\bm{\lambda})\succeq\mathbf{H}(\bm{\lambda})$, and $\mathbf{H}(\bm{\lambda})\succ\bm{0}$ by Lemma~\ref{lem:global-curvature-bounds}.
+\end{proof}
+
+\section{Proof of the Edgeworth Mean Correction}
+\label{app:edgeworth-proof}
+
+Fix $\bm{\theta}$ with $\sigma^{2}>0$ and a group $j$, and drop the subscript $j$. Let $\ell(\bm{\lambda})$ denote the log-posterior of \eqref{eq:log-lik-chap2}, i.e. the group log-likelihood plus the prior kernel $-\frac{1}{2}\bm{\lambda}^{\top}\bm{\Sigma}^{-1}\bm{\lambda}$, up to an additive constant. Let $\hat{\bm{\lambda}}$ be its mode, $\mathbf{H}:=-\nabla^{2}\ell(\hat{\bm{\lambda}})$ be the Hessian matrix, and $\hat{\mathbf{S}}:=\mathbf{H}^{-1}$ be the curvature at $\bm{\hat{\bm{\lambda}}}$. Let $\mathbf{T}$ be the tensor \eqref{eq:third-tensor} evaluated at $\hat{\bm{\lambda}}$. Write $\bm{u}:=\bm{\lambda}-\hat{\bm{\lambda}}$, let $\varphi(\cdot):=\varphi(\cdot;\bm{0},\hat{\mathbf{S}})$ be the $\mathcal{N}(\bm{0},\hat{\mathbf{S}})$ density, let $\bm{u}_{0}\sim\mathcal{N}(\bm{0},\hat{\mathbf{S}})$, and let $\mathbb{E}_{0}$ be the expectation under $\varphi$. The cubic form is $\mathbf{T}[\bm{u},\bm{u},\bm{u}]:=\sum_{q,r,s}\mathbf{T}_{qrs}u_{q}u_{r}u_{s}$.
+
+\begin{lemma}
+Let $\sigma^{2}>0$. Then $\ell$ is strictly concave, $-\nabla^{2}\ell(\bm{\lambda})\succeq\bm{\Sigma}^{-1}$ for every $\bm{\lambda}$, and $\ell(\hat{\bm{\lambda}}+\bm{u})\leq\ell(\hat{\bm{\lambda}})-\frac{1}{2}\bm{u}^{\top}\bm{\Sigma}^{-1}\bm{u}$ for every $\bm{u}$. Consequently the posterior has sub-Gaussian tails, and every polynomial moment of $\bm{u}$ under the posterior is finite.
+\label{lem:posterior-tails}
+\end{lemma}
+
+\begin{proof}
+The multinomial log-likelihood is concave in the linear predictor, because $\mathrm{lse}$ is convex, and the predictor is affine in $\bm{\lambda}$. So the likelihood part of $-\nabla^{2}\mathcal{L}$ is positive semidefinite, and the prior kernel adds $\bm{\Sigma}^{-1}\succ0$. This proves the curvature bound. At the mode, $\nabla\mathcal{L}(\hat{\bm{\lambda}})=\bm{0}$. Taylor's theorem with integral remainder gives $\mathcal{L}(\hat{\bm{\lambda}}+\bm{u})=\mathcal{L}(\hat{\bm{\lambda}})-\int_{0}^{1}(1-t)\,\bm{u}^{\top}\big(-\nabla^{2}\mathcal{L}(\hat{\bm{\lambda}}+t\bm{u})\big)\bm{u}\,\mathrm{d}t\leq\mathcal{L}(\hat{\bm{\lambda}})-\frac{1}{2}\bm{u}^{\top}\bm{\Sigma}^{-1}\bm{u}$. The posterior density is proportional to $\exp\{\mathcal{L}\}$ and is therefore dominated by a Gaussian, which yields the tail bound and the finiteness of all polynomial moments.
+\end{proof}
+
+\begin{lemma}
+Let $\bm{u}_{0}\sim\mathcal{N}(\bm{0},\mathbf{S})$ with $\mathbf{S}\succ0$. Then every odd-order moment vanishes, $\mathbb{E}\big[u_{0,q_{1}}\cdots u_{0,q_{m}}\big]=0$ for odd $m$, and the fourth moments are
+\begin{equation}
+    \mathbb{E}\big[u_{0,q}u_{0,r}u_{0,s}u_{0,t}\big]=\mathbf{S}_{qr}\mathbf{S}_{st}+\mathbf{S}_{qs}\mathbf{S}_{rt}+\mathbf{S}_{qt}\mathbf{S}_{rs}.
+    \label{eq:isserlis-fourth}
+\end{equation}
+\label{lem:gaussian-moments}
+\end{lemma}
+
+\begin{proof}
+The density is invariant under $\bm{u}\mapsto-\bm{u}$, and a monomial of odd total degree is odd, so its integral vanishes. For the fourth moments, the moment generating function $M(\bm{t}):=\mathbb{E}[\exp(\bm{t}^{\top}\bm{u}_{0})]=\exp\big(\frac{1}{2}\bm{t}^{\top}\mathbf{S}\bm{t}\big)$ is finite everywhere, and differentiation under the integral sign is justified by dominated convergence. Successive differentiation gives $\partial_{q}M=(\mathbf{S}\bm{t})_{q}M$, then $\partial_{r}\partial_{q}M=\big[\mathbf{S}_{qr}+(\mathbf{S}\bm{t})_{q}(\mathbf{S}\bm{t})_{r}\big]M$, then $\partial_{s}\partial_{r}\partial_{q}M=\big[\mathbf{S}_{qr}(\mathbf{S}\bm{t})_{s}+\mathbf{S}_{qs}(\mathbf{S}\bm{t})_{r}+\mathbf{S}_{rs}(\mathbf{S}\bm{t})_{q}+(\mathbf{S}\bm{t})_{q}(\mathbf{S}\bm{t})_{r}(\mathbf{S}\bm{t})_{s}\big]M$. Apply $\partial_{t}$ and set $\bm{t}=\bm{0}$. Every term that still carries a factor $(\mathbf{S}\bm{t})$ vanishes, and the surviving terms are exactly the three products in \eqref{eq:isserlis-fourth}.
+\end{proof}
+
+\begin{lemma}
+Let $\bm{p}=\bm{p}(\bm{\eta})$ be the softmax probabilities, $p_{q}=\exp(\eta_{q})/\sum_{l}\exp(\eta_{l})$. Write $\delta_{qr}$ for the Kronecker delta and $\delta_{qrs}:=\delta_{qr}\delta_{rs}$. Then three statements hold. First, the third derivative of the log-partition is
+\begin{equation}
+    \frac{\partial^{3}\,\mathrm{lse}(\bm{\eta})}{\partial\eta_{q}\,\partial\eta_{r}\,\partial\eta_{s}}=\delta_{qrs}p_{q}-\delta_{qr}p_{q}p_{s}-\delta_{qs}p_{q}p_{r}-\delta_{rs}p_{q}p_{r}+2p_{q}p_{r}p_{s}.
+    \label{eq:lse-third}
+\end{equation}
+Second, for every symmetric $\mathbf{S}$ the contraction \eqref{eq:T-contraction} equals the closed form \eqref{eq:T-contraction-multinomial}. Third, $\mathbf{T}(\bm{\lambda})$ is the $\bm{\lambda}$-gradient of the curvature, i.e. $\partial\mathbf{H}(\bm{\lambda})/\partial\lambda_{s}$ has entries $\mathbf{T}_{qrs}(\bm{\lambda})$, and equivalently $\nabla^{3}\mathcal{L}=-\mathbf{T}$.
+\label{lem:T-closed-form}
+\end{lemma}
+
+\begin{proof}
+The first derivative is $\partial\,\mathrm{lse}/\partial\eta_{q}=p_{q}$, and the softmax satisfies $\partial p_{q}/\partial\eta_{s}=p_{q}(\delta_{qs}-p_{s})$. Differentiating $\partial^{2}\mathrm{lse}/\partial\eta_{q}\partial\eta_{r}=\delta_{qr}p_{q}-p_{q}p_{r}$ once more in $\eta_{s}$ and substituting the softmax derivative gives $\delta_{qr}p_{q}(\delta_{qs}-p_{s})-p_{q}(\delta_{qs}-p_{s})p_{r}-p_{q}p_{r}(\delta_{rs}-p_{s})$, which collects to \eqref{eq:lse-third}. For the second statement, fix $q$ and sum \eqref{eq:lse-third} against $\mathbf{S}_{rs}$. The five terms give, in order, $p_{q}\mathbf{S}_{qq}$ from $r=s=q$, then $-p_{q}(\mathbf{S}\bm{p})_{q}$ from $r=q$, then $-p_{q}(\mathbf{S}\bm{p})_{q}$ from $s=q$ using the symmetry of $\mathbf{S}$, then $-p_{q}\,\bm{p}^{\top}\mathrm{diag}(\mathbf{S})$ from $r=s$, and finally $+2p_{q}\,\bm{p}^{\top}\mathbf{S}\bm{p}$. Weighting by $y_{ij\cdot}$ and summing over $i\in I_{j}$ yields \eqref{eq:T-contraction-multinomial}. For the third statement, $\mathbf{H}(\bm{\lambda})=\sum_{i\in I_{j}}y_{ij\cdot}\nabla^{2}\mathrm{lse}(\bm{\eta}_{i})+\bm{\Sigma}^{-1}$, the predictor satisfies $\partial\bm{\eta}_{i}/\partial\bm{\lambda}=\mathbf{I}_{Q}$, and the prior term is constant in $\bm{\lambda}$, so differentiating entrywise gives $\partial\mathbf{H}_{qr}/\partial\lambda_{s}=\mathbf{T}_{qrs}$. The linear part of the log-likelihood has no third derivative, so $\nabla^{3}\mathcal{L}=\nabla^{3}\big(-\sum_{i}y_{ij\cdot}\,\mathrm{lse}(\bm{\eta}_{i})\big)=-\mathbf{T}$.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:edgeworth-mean}]
+The prior kernel is quadratic and $\mathrm{lse}$ is smooth, so $\mathcal{L}$ is four times continuously differentiable. Expand around the mode. The gradient vanishes there, the negative Hessian is $\mathbf{H}$, and $\nabla^{3}\mathcal{L}=-\mathbf{T}$ by Lemma~\ref{lem:T-closed-form}. Taylor's theorem with Lagrange remainder gives
+\begin{equation}
+    \mathcal{L}(\hat{\bm{\lambda}}+\bm{u})=\mathcal{L}(\hat{\bm{\lambda}})-\frac{1}{2}\bm{u}^{\top}\mathbf{H}\bm{u}-\frac{1}{6}\mathbf{T}[\bm{u},\bm{u},\bm{u}]+R_{4}(\bm{u}),
+    \label{eq:fourth-taylor}
+\end{equation}
+where $R_{4}(\bm{u})=\frac{1}{24}\sum_{q,r,s,t}\partial^{4}_{qrst}\mathcal{L}(\hat{\bm{\lambda}}+\tau\bm{u})\,u_{q}u_{r}u_{s}u_{t}$ for some $\tau=\tau(\bm{u})\in[0,1]$. Fourth derivatives of $\mathrm{lse}$ are uniformly bounded on $\mathbb{R}^{Q}$ and the prior contributes nothing, so $|R_{4}(\bm{u})|\leq C\|\bm{u}\|^{4}$ for a finite constant $C$ depending only on the group totals. Write $x(\bm{u}):=-\frac{1}{6}\mathbf{T}[\bm{u},\bm{u},\bm{u}]+R_{4}(\bm{u})$. Exponentiating \eqref{eq:fourth-taylor} and normalizing, the posterior density of $\bm{u}$ is
+\begin{equation}
+    p(\bm{u})=\frac{1}{Z}\,\varphi(\bm{u})\,e^{x(\bm{u})},\qquad Z:=\mathbb{E}_{0}\big[e^{x(\bm{u}_{0})}\big],
+    \label{eq:posterior-tilt}
+\end{equation}
+because $\exp\{-\frac{1}{2}\bm{u}^{\top}\mathbf{H}\bm{u}\}$ is the $\mathcal{N}(\bm{0},\hat{\mathbf{S}})$ kernel and all constants cancel in the ratio. $Z$ is positive, and it is finite because $\varphi\,e^{x}$ is proportional to the posterior, which is integrable by Lemma~\ref{lem:posterior-tails}. Now split the tilt exactly as $e^{x}=1+x+\rho$ with $\rho(\bm{u}):=e^{x(\bm{u})}-1-x(\bm{u})$. No truncation is made. All expectations below are finite. Terms of the form $\mathbb{E}_{0}[\|\bm{u}_{0}\|^{m}|x(\bm{u}_{0})|^{k}]$ are finite because $|x|$ grows at most polynomially and Gaussian moments are finite, and terms involving $e^{x}$ are finite because $\varphi\,e^{x}$ has sub-Gaussian tails by Lemma~\ref{lem:posterior-tails}. For the normalizing constant, $\mathbb{E}_{0}\big[\mathbf{T}[\bm{u}_{0},\bm{u}_{0},\bm{u}_{0}]\big]=0$, because it is a sum of third moments of a centered Gaussian, which vanish by Lemma~\ref{lem:gaussian-moments}. Hence
+\begin{equation}
+    Z=1+b,\qquad b:=\mathbb{E}_{0}\big[R_{4}(\bm{u}_{0})\big]+\mathbb{E}_{0}\big[\rho(\bm{u}_{0})\big],
+    \label{eq:Z-split}
+\end{equation}
+and $1+b=Z>0$. This is the step at which the cubic term drops out of $Z$. For the mean, $\mathbb{E}[u_{q}]=Z^{-1}\mathbb{E}_{0}\big[u_{0,q}\,e^{x(\bm{u}_{0})}\big]$ and $\mathbb{E}_{0}[u_{0,q}]=0$, so only the $x$ part and the $\rho$ part contribute. The cubic part of $x$ needs the fourth Gaussian moment \eqref{eq:isserlis-fourth},
+\begin{equation}
+    -\frac{1}{6}\sum_{r,s,t}\mathbf{T}_{rst}\,\mathbb{E}_{0}\big[u_{0,q}u_{0,r}u_{0,s}u_{0,t}\big]=-\frac{1}{6}\sum_{r,s,t}\mathbf{T}_{rst}\Big(\hat{\mathbf{S}}_{qr}\hat{\mathbf{S}}_{st}+\hat{\mathbf{S}}_{qs}\hat{\mathbf{S}}_{rt}+\hat{\mathbf{S}}_{qt}\hat{\mathbf{S}}_{rs}\Big).
+    \label{eq:isserlis-step}
+\end{equation}
+$\mathbf{T}$ is fully symmetric in its three indices, so the three sums on the right are equal. Each one factorizes through the contraction \eqref{eq:T-contraction},
+\begin{equation}
+    \sum_{r,s,t}\mathbf{T}_{rst}\,\hat{\mathbf{S}}_{qr}\hat{\mathbf{S}}_{st}=\sum_{r}\hat{\mathbf{S}}_{qr}\sum_{s,t}\mathbf{T}_{rst}\hat{\mathbf{S}}_{st}=\Big(\hat{\mathbf{S}}\big\langle\mathbf{T},\hat{\mathbf{S}}\big\rangle\Big)_{q}.
+    \label{eq:isserlis-collapse}
+\end{equation}
+Hence the cubic part contributes exactly $-\frac{1}{6}\cdot3\cdot\hat{\mathbf{S}}\big\langle\mathbf{T},\hat{\mathbf{S}}\big\rangle=\bm{\mu}_{1}$, and
+\begin{equation}
+    \mathbb{E}_{0}\big[\bm{u}_{0}\,e^{x(\bm{u}_{0})}\big]=\bm{\mu}_{1}+\bm{a},\qquad\bm{a}:=\mathbb{E}_{0}\big[\bm{u}_{0}R_{4}(\bm{u}_{0})\big]+\mathbb{E}_{0}\big[\bm{u}_{0}\rho(\bm{u}_{0})\big].
+    \label{eq:numerator-split}
+\end{equation}
+Combining \eqref{eq:Z-split} and \eqref{eq:numerator-split},
+\begin{equation}
+    \mathbb{E}[\bm{u}]=\frac{\bm{\mu}_{1}+\bm{a}}{1+b}=\bm{\mu}_{1}+\bm{r},\qquad\bm{r}:=\frac{\bm{a}-b\,\bm{\mu}_{1}}{1+b}.
+    \label{eq:remainder-def}
+\end{equation}
+Adding back the mode gives $\mathbb{E}[\bm{\lambda}\mid\bm{y},\bm{\theta}]=\hat{\bm{\lambda}}+\bm{\mu}_{1}+\bm{r}$. Every step above is an identity, so the decomposition is exact.
+\end{proof}
+
+\begin{remark}
+The decomposition is exact, and the value of the correction shows in the orders. Suppose the information of group $j$ grows, in the sense that the eigenvalues of $\mathbf{H}$ are of order $N_{j}:=\sum_{i\in I_{j}}y_{ij\cdot}$ and the entries of $\mathbf{T}$ are of order $N_{j}$, and write $\delta:=N_{j}^{-1/2}$ for the posterior length scale, holding $Q$ fixed. Then $\bm{u}_{0}=O_{p}(\delta)$, the cubic tilt is $O(\delta)$, the quartic tilt is $O(\delta^{2})$, and $\bm{\mu}_{1}=O(\delta^{2})$, one order below the posterior standard deviation. The candidates of order $\delta^{3}$ inside $\bm{a}$ are $\mathbb{E}_{0}[\bm{u}_{0}\cdot(\text{quartic tilt})]$ and $\frac{1}{2}\mathbb{E}_{0}[\bm{u}_{0}\,x^{2}]$ at leading order. The first is a fifth Gaussian moment and the second is a seventh Gaussian moment at leading order, so both vanish by Lemma~\ref{lem:gaussian-moments}. The surviving contributions are the fifth-order Taylor term, products of the cubic and quartic tilts, and the coupling $b\,\bm{\mu}_{1}$, all of order $\delta^{4}$. Relative to the posterior standard deviation, the mode approximates the mean to order $\delta$, and the corrected location $\hat{\bm{\lambda}}+\bm{\mu}_{1}$ to order $\delta^{3}$. The gain is two orders in $\delta$, and the intermediate order is skipped by parity, not by cancellation of model-specific terms. This is a bookkeeping argument at fixed $Q$, not a proven finite-sample bound. Bounds of exactly this form, with explicit dependence on the dimension, are established by \citet{Katsevich2024}, and we do not reproduce them here.
+\label{rem:order-bookkeeping}
+\end{remark}
+
+\begin{remark}
+This appendix reaches \eqref{eq: edgeworth} by expanding the posterior mean around the Laplace mode. Proposition~\ref{prop:newton-edgeworth} in Section~\ref{subsec:non-monotonicity} reaches the same object as one Newton step of the MM $\bm{\Lambda}$-block. The two derivations share no intermediate step.
+\label{rem:two-routes}
+\end{remark}
+
+\section{Proofs for PME defect}
+\label{app:pme-defect-proofs}
+
+Fix a group $j$ and drop the subscript inside the first two proofs, as in the main text. Write $A_{i}(\bm{\lambda}):=\sum_{q=1}^{Q}\exp(\eta_{iq}(\bm{\lambda}))$, so that $p_{iq}=\exp(\eta_{iq})/A_{i}$ and $\operatorname{lse}(\bm{\eta}_{i})=\log A_{i}$. Observations with $y_{ij\cdot}=0$ have $y_{iq}=0$ for every $q$; they contribute zero to $h$, to $\mathbf{d}(\bm{\lambda})$ and to $\mathbf{C}(\bm{\lambda})$, and their Poisson terms have supremum zero over the offset, so we may discard them throughout and assume $y_{ij\cdot}>0$ for every retained observation.
+
+\begin{proof}[Proof of Lemma~\ref{lem:mp-profile-exact}]
+Fix $\bm{\lambda}$. The terms of $h_{P}^{\mathrm{full}}(\bm{\lambda},\bm{\xi})$ that involve $\xi_{i}$ are $g_{i}(\xi_{i}):=y_{ij\cdot}\xi_{i}-e^{\xi_{i}}A_{i}(\bm{\lambda})$, and the offsets separate over observations. Each $g_{i}$ is strictly concave, with $g_{i}'(\xi_{i})=y_{ij\cdot}-e^{\xi_{i}}A_{i}(\bm{\lambda})$ and $g_{i}''(\xi_{i})=-e^{\xi_{i}}A_{i}(\bm{\lambda})<0$, so it has the unique maximizer $e^{\xi_{i}}=y_{ij\cdot}/A_{i}(\bm{\lambda})$, that is $\xi_{i}=\log y_{ij\cdot}-\operatorname{lse}(\bm{\eta}_{i}(\bm{\lambda}))=\xi_{i}(\bm{\lambda})$, which proves (i) and reproduces the profiling identity $\exp(\eta_{iq}+\xi_{i}(\bm{\lambda}))=y_{ij\cdot}p_{iq}(\bm{\lambda})$. The maximal value is $g_{i}(\xi_{i}(\bm{\lambda}))=y_{ij\cdot}\log y_{ij\cdot}-y_{ij\cdot}\operatorname{lse}(\bm{\eta}_{i}(\bm{\lambda}))-y_{ij\cdot}$. Adding the remaining terms $\sum_{q}y_{iq}\eta_{iq}$ of observation $i$ and summing over $i$, together with the prior kernel $-\frac{1}{2}\bm{\lambda}^{\top}\bm{\Sigma}^{-1}\bm{\lambda}$ common to both sides, gives $\sup_{\bm{\xi}}h_{P}^{\mathrm{full}}(\bm{\lambda},\bm{\xi})=\sum_{i}\big[\bm{y}_{i}^{\top}\bm{\eta}_{i}-y_{ij\cdot}\operatorname{lse}(\bm{\eta}_{i})\big]-\frac{1}{2}\bm{\lambda}^{\top}\bm{\Sigma}^{-1}\bm{\lambda}+c_{j}=h(\bm{\lambda})+c_{j}$, which is (ii). For (iii), $h_{P}^{\mathrm{full}}-h_{P}=\sum_{i}y_{ij\cdot}\xi_{i}$ does not involve $\bm{\lambda}$ when $\bm{\xi}$ is frozen, so the two frozen-offset gradients in $\bm{\lambda}$ coincide, and they equal $\nabla h(\bm{\lambda})$ at $\bm{\xi}=\bm{\xi}(\bm{\lambda})$ by Lemma~\ref{lem:score-match}.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:offset-feedback}]
+(i) The Jacobian is direct: $\partial\xi_{i}(\bm{\lambda})/\partial\lambda_{r}=-\partial\operatorname{lse}(\bm{\eta}_{i})/\partial\lambda_{r}=-p_{ir}(\bm{\lambda})$, since $\partial\eta_{iq}/\partial\lambda_{r}=\delta_{qr}$. Define $\mathbf{F}(\bm{\lambda},\bm{\xi}):=\nabla_{\bm{\lambda}}h_{P}(\bm{\lambda},\bm{\xi})$, the frozen-offset score, with components $F_{q}=\sum_{i}[y_{iq}-\exp(\eta_{iq}+\xi_{i})]-(\bm{\Sigma}^{-1}\bm{\lambda})_{q}$. Lemma~\ref{lem:score-match} states $\mathbf{F}(\bm{\lambda},\bm{\xi}(\bm{\lambda}))=\nabla h(\bm{\lambda})$ for every $\bm{\lambda}$, and both sides are continuously differentiable. Differentiating in $\lambda_{r}$ by the chain rule,
+\begin{equation}
+    \nabla^{2}h(\bm{\lambda})=\underbrace{\frac{\partial\mathbf{F}}{\partial\bm{\lambda}}}_{=\,-\mathbf{H}_{P}(\bm{\lambda})}+\frac{\partial\mathbf{F}}{\partial\bm{\xi}}\,\frac{\partial\bm{\xi}(\bm{\lambda})}{\partial\bm{\lambda}},
+    \label{eq:score-chain}
+\end{equation}
+where the first term is $-\operatorname{diag}(\mathbf{d}(\bm{\lambda}))-\bm{\Sigma}^{-1}=-\mathbf{H}_{P}(\bm{\lambda})$ by the computation behind \eqref{eq:HP-diagonal}, and the second term has $(q,r)$ entry $\sum_{i}\big(-\exp(\eta_{iq}+\xi_{i}(\bm{\lambda}))\big)\big(-p_{ir}\big)=\sum_{i}y_{ij\cdot}p_{iq}p_{ir}=\mathbf{C}_{qr}(\bm{\lambda})$, using the profiling identity. Hence $-\mathbf{H}=-\mathbf{H}_{P}+\mathbf{C}$, that is $\mathbf{H}=\mathbf{H}_{P}-\mathbf{C}$, and the deleted feedback term is exactly $\mathbf{C}$. (ii) At $\bm{\xi}=\bm{\xi}(\bm{\lambda})$ the offset block is stationary by Lemma~\ref{lem:mp-profile-exact}(i), $\nabla_{\bm{\xi}}h_{P}^{\mathrm{full}}(\bm{\lambda},\bm{\xi}(\bm{\lambda}))=\bm{0}$. The blocks of the joint negative Hessian of $h_{P}^{\mathrm{full}}$ there are $\mathbf{A}:=-\nabla^{2}_{\bm{\lambda}\bm{\lambda}}h_{P}^{\mathrm{full}}=\mathbf{H}_{P}$, $\mathbf{D}:=-\nabla^{2}_{\bm{\xi}\bm{\xi}}h_{P}^{\mathrm{full}}=\operatorname{diag}(e^{\xi_{i}}A_{i})=\operatorname{diag}(y_{ij\cdot})\succ\bm{0}$, and $\mathbf{B}:=-\nabla^{2}_{\bm{\lambda}\bm{\xi}}h_{P}^{\mathrm{full}}$ with entries $\mathbf{B}_{qi}=\exp(\eta_{iq}+\xi_{i})=y_{ij\cdot}p_{iq}$. Differentiating the stationarity condition gives $\partial\bm{\xi}/\partial\bm{\lambda}=-\mathbf{D}^{-1}\mathbf{B}^{\top}$, whose entries are $-(1/y_{ij\cdot})(y_{ij\cdot}p_{ir})=-p_{ir}$, consistent with (i). Writing $\pi(\bm{\lambda}):=h_{P}^{\mathrm{full}}(\bm{\lambda},\bm{\xi}(\bm{\lambda}))$, the stationarity of the offset block gives $\nabla\pi=\partial_{\bm{\lambda}}h_{P}^{\mathrm{full}}$, and differentiating once more,
+\begin{equation}
+    -\nabla^{2}\pi(\bm{\lambda})=\mathbf{A}-\mathbf{B}\mathbf{D}^{-1}\mathbf{B}^{\top}=\mathbf{H}_{P}(\bm{\lambda})-\sum_{i}\frac{(y_{ij\cdot}\bm{p}_{i})(y_{ij\cdot}\bm{p}_{i})^{\top}}{y_{ij\cdot}}=\mathbf{H}_{P}(\bm{\lambda})-\mathbf{C}(\bm{\lambda}),
+    \label{eq:schur-profile}
+\end{equation}
+the Schur complement of the offset block. By Lemma~\ref{lem:mp-profile-exact}(ii), $\pi=h+c_{j}$, so $-\nabla^{2}\pi=\mathbf{H}$, and \eqref{eq:schur-profile} is the same identity again, now with $\mathbf{C}$ identified as the Schur term that freezing deletes. (iii) A multinomial count with total $y_{ij\cdot}$ and probabilities $\bm{p}_{i}$ has covariance $y_{ij\cdot}(\operatorname{diag}(\bm{p}_{i})-\bm{p}_{i}\bm{p}_{i}^{\top})$, and $Q$ independent Poisson counts with means $y_{ij\cdot}p_{iq}$ have covariance $y_{ij\cdot}\operatorname{diag}(\bm{p}_{i})$. Their difference is $y_{ij\cdot}\bm{p}_{i}\bm{p}_{i}^{\top}$, and summing over $i$ gives $\mathbf{C}$.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:pme-evidence-gap}]
+(i) Fix $\bm{\theta}$ and a group $j$, and evaluate every matrix at $(\hat{\bm{\lambda}}_{j}(\bm{\theta}),\bm{\theta})$. By Proposition~\ref{prop:offset-feedback}, $\mathbf{H}_{P,j}=\mathbf{H}_{j}+\mathbf{C}_{j}$ with $\mathbf{H}_{j}\succ\bm{0}$ and $\mathbf{C}_{j}\succeq\bm{0}$, so $\det\mathbf{H}_{P,j}=\det\mathbf{H}_{j}\,\det(\mathbf{I}_{Q}+\mathbf{H}_{j}^{-1}\mathbf{C}_{j})$. The matrix $\mathbf{H}_{j}^{-1}\mathbf{C}_{j}$ is similar to $\mathbf{H}_{j}^{-1/2}\mathbf{C}_{j}\mathbf{H}_{j}^{-1/2}\succeq\bm{0}$, so its eigenvalues $\gamma_{1}\geq\dots\geq\gamma_{Q}\geq0$ are nonnegative and $\log\det(\mathbf{I}_{Q}+\mathbf{H}_{j}^{-1}\mathbf{C}_{j})=\sum_{k}\log(1+\gamma_{k})\geq0$, with equality if and only if $\mathbf{C}_{j}=\bm{0}$, that is $N_{j}=0$. Subtracting the two evidence definitions termwise gives \eqref{eq:evidence-gap}. (ii) For the lower bound, $\gamma_{1}\geq Q^{-1}\sum_{k}\gamma_{k}=Q^{-1}\operatorname{tr}(\mathbf{H}_{j}^{-1}\mathbf{C}_{j})$. Since $\mathbf{H}_{j}^{-1}\succeq\lambda_{\max}(\mathbf{H}_{j})^{-1}\mathbf{I}_{Q}$ and $\mathbf{C}_{j}\succeq\bm{0}$, $\operatorname{tr}(\mathbf{H}_{j}^{-1}\mathbf{C}_{j})\geq\operatorname{tr}(\mathbf{C}_{j})/\lambda_{\max}(\mathbf{H}_{j})$. By Cauchy--Schwarz, $\|\bm{p}_{i}\|^{2}\geq(\sum_{q}p_{iq})^{2}/Q=1/Q$, so $\operatorname{tr}(\mathbf{C}_{j})=\sum_{i}y_{ij\cdot}\|\bm{p}_{i}\|^{2}\geq N_{j}/Q$, while Lemma~\ref{lem:tensor-scale}(i) and $\bm{\Sigma}\succeq\sigma^{2}_{\min}\mathbf{I}_{Q}$ under (D2) give $\lambda_{\max}(\mathbf{H}_{j})\leq\sigma_{\min}^{-2}+N_{j}\leq2N_{j}$ once $N_{j}\geq\sigma_{\min}^{-2}$. Hence $\operatorname{tr}(\mathbf{H}_{j}^{-1}\mathbf{C}_{j})\geq1/(2Q)$, so $\gamma_{1}\geq1/(2Q^{2})$ and the $j$-th summand of $\Delta$ is at least $\frac{1}{2}\log(1+\gamma_{1})\geq\frac{1}{2}\log(1+\frac{1}{2Q^{2}})$. For the upper bound, $\log(1+x)\leq x$ gives the summand at most $\frac{1}{2}\operatorname{tr}(\mathbf{H}_{j}^{-1}\mathbf{C}_{j})\leq\frac{1}{2}\lambda_{\min}(\mathbf{H}_{j})^{-1}\operatorname{tr}(\mathbf{C}_{j})$, and (D4) at the mode gives $\lambda_{\min}(\mathbf{H}_{j})\geq c_{0}N_{j}$ while $\|\bm{p}_{i}\|^{2}\leq\sum_{q}p_{iq}=1$ gives $\operatorname{tr}(\mathbf{C}_{j})\leq N_{j}$, so the summand is at most $1/(2c_{0})$. Both bounds are uniform in $\bm{\theta}\in\Theta$ and in $j$, with constants depending only on $Q$, $\sigma_{\min}$ and $c_{0}$, and summing over groups gives $cJ\leq\Delta(\bm{\theta})\leq CJ$. (iii) By \eqref{eq:evidence-gap} and Proposition~\ref{prop:criteria-gap}, $\ell_{J}-\ell_{\text{LA}}^{P}=(\ell_{J}-\ell_{\text{LA}})+\Delta$, and $\sup_{\Theta}|\ell_{J}-\ell_{\text{LA}}|\leq C\kappa J/N$, so for $N$ large enough that $C\kappa/N\leq c/2$, $\ell_{J}(\bm{\theta})-\ell_{\text{LA}}^{P}(\bm{\theta})\geq(c/2)J$ uniformly on $\Theta$. Per group, the PME distortion is bounded below by $\frac{1}{2}\log(1+\frac{1}{2Q^{2}})$ while $|\log Z_{j}|\leq C/N_{j}$ by Lemma~\ref{lem:laplace-error}, which is the claimed order gap. Finally, for \eqref{eq:gap-gradient}, the map $\bm{\theta}\mapsto\hat{\bm{\lambda}}_{j}(\bm{\theta})$ is continuously differentiable by the implicit function theorem, as in the proof of Lemma~\ref{lem:G-score-cancel}, and Jacobi's formula $\partial\log\det\mathbf{M}=\operatorname{tr}(\mathbf{M}^{-1}\partial\mathbf{M})$ applied to $\log|\mathbf{H}_{P,j}|$ and $\log|\mathbf{H}_{j}|$, with the total derivative $\mathrm{D}_{r}$ collecting the direct channel and the mode channel, gives the stated expression. In the $\mathbf{H}_{j}$ trace, the mode-channel part is $\sum_{k}\operatorname{tr}(\mathbf{H}_{j}^{-1}\partial\mathbf{H}_{j}/\partial\lambda_{k})\,\partial\hat{\lambda}_{jk}/\partial\theta_{r}=\sum_{k}\big\langle\mathbf{T}_{j},\mathbf{H}_{j}^{-1}\big\rangle_{k}\,\partial\hat{\lambda}_{jk}/\partial\theta_{r}$ by \eqref{eq:T-contraction}, the same contraction that carries the obstruction gap \eqref{eq:obstruction-gap}.
+\end{proof}
+
+\section{Proofs and details for non-monotonicity}
+\label{app:mm-proofs}
+
+Throughout this appendix, $h_{j}(\bm{\lambda},\bm{\theta})$ denotes the group Laplace integrand. It is the multinomial log-likelihood of group $j$, with the random effect $\bm{\lambda}$ entering the linear predictor, plus the Gaussian prior kernel $-\frac{1}{2}\bm{\lambda}^{\top}\bm{\Sigma}^{-1}\bm{\lambda}$, where $\bm{\Sigma}=\mathbf{B}\mathbf{B}^{\top}+\sigma^{2}\mathbf{I}_{Q}$. The prior normalizing constant is excluded from $h_{j}$ and tracked separately. The curvature is $\mathbf{H}_{j}(\bm{\lambda},\bm{\theta}):=-\nabla^{2}_{\bm{\lambda}}h_{j}(\bm{\lambda},\bm{\theta})$, its inverse is written $\mathbf{S}$, and $\hat{\mathbf{S}}_{j}$ denotes the inverse at the $h$-mode $\hat{\bm{\lambda}}_{j}$. The third-derivative tensor $\mathbf{T}_{j}$ and the contraction $\big\langle\cdot,\cdot\big\rangle$ are the ones defined in \eqref{eq:third-tensor} and \eqref{eq:T-contraction}. By Lemma~\ref{lem:T-closed-form}, the equivalent slice form is $\big(\mathbf{T}_{j}\big)_{k}=\partial\mathbf{H}_{j}/\partial\lambda_{k}$ and $\big\langle\mathbf{T}_{j},\mathbf{S}\big\rangle_{k}=\operatorname{tr}\big((\mathbf{T}_{j})_{k}\,\mathbf{S}\big)$, and this is the form used below.
+The marginal likelihood of group $j$ is $L_{j}(\bm{\theta})=\int f(\mathbf{y}_{j}\mid\bm{\lambda},\bm{\theta})\,\varphi(\bm{\lambda};\mathbf{0},\bm{\Sigma})\,\mathrm{d}\bm{\lambda}=(2\pi)^{-Q/2}|\bm{\Sigma}|^{-1/2}\int\exp\{h_{j}(\bm{\lambda},\bm{\theta})\}\,\mathrm{d}\bm{\lambda}$. The Laplace approximation of the integral at the $h$-mode is $(2\pi)^{Q/2}\big|\mathbf{H}_{j}(\hat{\bm{\lambda}}_{j},\bm{\theta})\big|^{-1/2}\exp\{h_{j}(\hat{\bm{\lambda}}_{j},\bm{\theta})\}$. The $(2\pi)$ factors cancel exactly. Taking logarithms and summing over $j$ yields \eqref{eq:ellLA} with no leftover constant. This is the convention under which Lemma~\ref{lem:G-anchors} below holds as an exact identity.
+
+\begin{lemma}
+If $\sigma^{2}>0$, then $\mathbf{H}_{j}(\bm{\lambda},\bm{\theta})\succ0$ for every $\bm{\lambda}$ and every $\bm{\theta}$, and $\Phi_{j}(\bm{\theta},\cdot)$ attains its maximum over $\bm{\lambda}$.
+\label{lem:H-pd}
+\end{lemma}
+
+\begin{proof}
+The multinomial log-likelihood is concave in the linear predictor, because the log-partition function $\log\sum_{q}\exp(\eta_{q})$ is convex. The predictor is affine in $\bm{\lambda}$, so the data part of $\mathbf{H}_{j}$ is positive semidefinite. The prior kernel contributes $\bm{\Sigma}^{-1}\succ0$ when $\sigma^{2}>0$. The sum is positive definite. For attainment, note $\mathbf{H}_{j}\succeq\bm{\Sigma}^{-1}$ gives $-\frac{1}{2}\log|\mathbf{H}_{j}|\leq\frac{1}{2}\log|\bm{\Sigma}|$, so $\Phi_{j}(\bm{\theta},\bm{\lambda})\leq h_{j}(\bm{\lambda},\bm{\theta})+\frac{1}{2}\log|\bm{\Sigma}|$. The right side tends to $-\infty$ as $\|\bm{\lambda}\|\to\infty$ because the prior kernel dominates. A continuous function that tends to $-\infty$ attains its maximum.
+\end{proof}
+
+\begin{lemma}
+Let $\mathbf{A}\succ0$ and $\mathbf{B}\succ0$ be of the same size. Then $\log|\mathbf{A}|\leq\log|\mathbf{B}|+\operatorname{tr}\big(\mathbf{B}^{-1}(\mathbf{A}-\mathbf{B})\big)$, with equality if and only if $\mathbf{A}=\mathbf{B}$. Equivalently, \eqref{eq:logdet-tangent} holds with base point $\mathbf{B}=\mathbf{H}_{j}^{(t)}$.
+\label{lem:logdet-tangent}
+\end{lemma}
+
+\begin{proof}
+Set $\mathbf{C}:=\mathbf{B}^{-1/2}\mathbf{A}\mathbf{B}^{-1/2}$ with eigenvalues $d_{1},\dots,d_{Q}>0$. Then $\log|\mathbf{A}|-\log|\mathbf{B}|=\log|\mathbf{C}|=\sum_{i}\log d_{i}$ and $\operatorname{tr}\big(\mathbf{B}^{-1}(\mathbf{A}-\mathbf{B})\big)=\operatorname{tr}(\mathbf{C}-\mathbf{I})=\sum_{i}(d_{i}-1)$. The scalar inequality $\log x\leq x-1$ for $x>0$ gives the claim, with equality if and only if every $d_{i}=1$, i.e. $\mathbf{A}=\mathbf{B}$.
+\end{proof}
+
+\begin{lemma}
+$\Phi_{j}$ is continuously differentiable in $\bm{\lambda}$ and \eqref{eq:Phi-grad} holds, that is, $\nabla_{\bm{\lambda}}\Phi_{j}(\bm{\theta},\bm{\lambda})=\nabla_{\bm{\lambda}}h_{j}(\bm{\lambda},\bm{\theta})-\frac{1}{2}\big\langle\mathbf{T}_{j}(\bm{\lambda},\bm{\theta}),\mathbf{H}_{j}^{-1}(\bm{\lambda},\bm{\theta})\big\rangle$.
+\label{lem:Phi-grad}
+\end{lemma}
+
+\begin{proof}
+Jacobi's formula gives $\partial\log|\mathbf{H}_{j}|/\partial\lambda_{k}=\operatorname{tr}\big(\mathbf{H}_{j}^{-1}\,\partial\mathbf{H}_{j}/\partial\lambda_{k}\big)=\big\langle\mathbf{T}_{j},\mathbf{H}_{j}^{-1}\big\rangle_{k}$ by \eqref{eq:T-contraction} and the cyclic property of the trace. Differentiating \eqref{eq:Phi-def} termwise completes the proof. $\mathbf{H}_{j}$ is invertible everywhere by Lemma~\ref{lem:H-pd}.
+\end{proof}
+
+\begin{lemma}
+Write $\hat{\bm{\Lambda}}(\bm{\theta}):=\big(\hat{\bm{\lambda}}_{1}(\bm{\theta}),\dots,\hat{\bm{\lambda}}_{J}(\bm{\theta})\big)$ for the stacked $h$-modes. Then the following two identities hold. First, $G\big(\bm{\theta},\hat{\bm{\Lambda}}(\bm{\theta})\big)=\ell_{\text{LA}}(\bm{\theta})$. Second, $\max_{\bm{\Lambda}}G(\bm{\theta},\bm{\Lambda})\geq\ell_{\text{LA}}(\bm{\theta})$, and the maximum is attained at the curvature-penalized modes $\bar{\bm{\lambda}}_{j}=\arg\max_{\bm{\lambda}}\Phi_{j}(\bm{\theta},\bm{\lambda})$.
+\label{lem:G-anchors}
+\end{lemma}
+
+\begin{proof}
+For the first identity, substitute $\bm{\lambda}_{j}=\hat{\bm{\lambda}}_{j}(\bm{\theta})$ into \eqref{eq:Phi-def} and \eqref{eq:G-def} and compare with \eqref{eq:ellLA} under the bookkeeping above. The two expressions agree term by term. For the second identity, the maximum over $\bm{\Lambda}$ is at least the value at the particular point $\hat{\bm{\Lambda}}(\bm{\theta})$, which equals $\ell_{\text{LA}}(\bm{\theta})$ by the first identity. $G$ separates over groups up to the common $\log|\bm{\Sigma}|$ term, so the maximum is attained groupwise at $\bar{\bm{\lambda}}_{j}$, which exists by Lemma~\ref{lem:H-pd}.
+\end{proof}
+
+\begin{proposition}
+Fix an iterate $\bm{\theta}^{(t)}$ and define the transplanted surrogate $\tilde{Q}\big(\bm{\theta}\mid\bm{\theta}^{(t)}\big):=\sum_{j=1}^{J}h_{j}\big(\hat{\bm{\lambda}}_{j}(\bm{\theta}^{(t)}),\bm{\theta}\big)-\frac{J}{2}\log|\bm{\Sigma}|+c^{(t)}$, where $c^{(t)}$ collects the curvature terms frozen at $\bm{\theta}^{(t)}$. The map $\bm{\theta}\mapsto\hat{\bm{\lambda}}_{j}(\bm{\theta})$ is differentiable by the implicit function theorem and Lemma~\ref{lem:H-pd}. Suppose that for some coordinate $\theta_{r}$,
+\begin{equation}
+    \sum_{j=1}^{J}\left[\operatorname{tr}\Big(\hat{\mathbf{S}}_{j}\,\partial_{\theta_{r}}\mathbf{H}_{j}\big(\hat{\bm{\lambda}}_{j},\bm{\theta}^{(t)}\big)\Big)+\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle^{\top}\partial_{\theta_{r}}\hat{\bm{\lambda}}_{j}\big(\bm{\theta}^{(t)}\big)\right]\neq0.
+    \label{eq:obstruction-gap}
+\end{equation}
+Then $\tilde{Q}$ cannot be simultaneously a global minorizer of $\ell_{\text{LA}}$ and tangent to it at $\bm{\theta}^{(t)}$.
+\label{prop:naive-obstruction}
+\end{proposition}
+
+\begin{proof}
+Suppose $\tilde{Q}\leq\ell_{\text{LA}}$ everywhere with equality at $\bm{\theta}^{(t)}$. Then $\bm{\theta}^{(t)}$ is an interior maximum of the smooth function $\tilde{Q}-\ell_{\text{LA}}$, so the gradients match, $\nabla\tilde{Q}\big(\bm{\theta}^{(t)}\big)=\nabla\ell_{\text{LA}}\big(\bm{\theta}^{(t)}\big)$. Differentiate \eqref{eq:ellLA} by the chain rule. The mode feedback of the $h$-part vanishes, because $\nabla_{\bm{\lambda}}h_{j}\big(\hat{\bm{\lambda}}_{j},\bm{\theta}^{(t)}\big)=\bm{0}$ by definition of the mode. The direct $\bm{\theta}$-derivatives of the $h$-part and of the $\log|\bm{\Sigma}|$ term coincide with those of $\tilde{Q}$ at $\bm{\theta}^{(t)}$, because the frozen mode equals the true mode there. The log-determinant contributes both a direct term and a mode-feedback term by Jacobi's formula and Lemma~\ref{lem:Phi-grad}. Collecting terms, $\partial_{\theta_{r}}\ell_{\text{LA}}\big(\bm{\theta}^{(t)}\big)-\partial_{\theta_{r}}\tilde{Q}\big(\bm{\theta}^{(t)}\big)$ equals $-\frac{1}{2}$ times the left side of \eqref{eq:obstruction-gap}. This is nonzero by assumption, which contradicts the gradient match.
+\end{proof}
+
+In the multinomial model, both bracketed terms in \eqref{eq:obstruction-gap} are nonzero in general. The contraction $\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle$ equals $-2\hat{\mathbf{S}}_{j}^{-1}\bm{\mu}_{1,j}$ up to the definition in \eqref{eq:newton-step}, so it vanishes only when the Edgeworth correction vanishes. In the single-expert Gaussian model and for its mean parameters, $\mathbf{H}_{j}$ depends neither on $\bm{\lambda}$ nor on those parameters, so both bracketed terms vanish and the obstruction disappears. Outside that quadratic case the obstruction is active, which is the precise sense in which a frozen-mode surrogate in the style of \citet{Yue2026} cannot be inherited. The gap in \eqref{eq:obstruction-gap} is a first-order quantity. It has no reason to shrink as the iterates approach a stationary point of $\ell_{\text{LA}}$.
+
+\begin{proposition}
+Fix $\big(\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)$ with $\sigma^{2(t)}>0$. Then $Q\big(\bm{\theta}\mid\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)\leq G\big(\bm{\theta},\bm{\Lambda}^{(t)}\big)$ for all $\bm{\theta}$ with $\sigma^{2}>0$, with equality at $\bm{\theta}=\bm{\theta}^{(t)}$. That is, $Q$ satisfies (P1) and (P2) for $F(\bm{\theta})=G\big(\bm{\theta},\bm{\Lambda}^{(t)}\big)$.
+\label{prop:Q-minorize}
+\end{proposition}
+
+\begin{proof}
+Compare \eqref{eq:Q-def} with \eqref{eq:G-def} at the frozen $\bm{\Lambda}^{(t)}$. The terms $h_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}\big)$ and $-\frac{J}{2}\log|\bm{\Sigma}|$ are common to both, so only the log-determinants differ. Apply Lemma~\ref{lem:logdet-tangent} groupwise with $\mathbf{A}=\mathbf{H}_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}\big)$ and $\mathbf{B}=\mathbf{H}_{j}^{(t)}$, both positive definite by Lemma~\ref{lem:H-pd}. This gives $-\frac{1}{2}\log\big|\mathbf{H}_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}\big)\big|\geq-\frac{1}{2}\log\big|\mathbf{H}_{j}^{(t)}\big|-\frac{1}{2}\operatorname{tr}\Big(\mathbf{S}_{j}^{(t)}\big(\mathbf{H}_{j}(\bm{\lambda}_{j}^{(t)},\bm{\theta})-\mathbf{H}_{j}^{(t)}\big)\Big)$ for every $\bm{\theta}$, which is (P1). At $\bm{\theta}=\bm{\theta}^{(t)}$ we have $\mathbf{H}_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}^{(t)}\big)=\mathbf{H}_{j}^{(t)}$, the trace term vanishes, and Lemma~\ref{lem:logdet-tangent} holds with equality, which is (P2).
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:G-non-decreasing}]
+By Lemma~\ref{lem:H-pd}, all curvatures along the iterates are positive definite, so Proposition~\ref{prop:Q-minorize} applies at every $t$. Step (A) gives $G\big(\bm{\theta}^{(t+1)},\bm{\Lambda}^{(t)}\big)\geq Q\big(\bm{\theta}^{(t+1)}\mid\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)\geq Q\big(\bm{\theta}^{(t)}\mid\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)=G\big(\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)$, using (P1), the ascent condition of (A), and (P2), in that order. Step (B) gives $G\big(\bm{\theta}^{(t+1)},\bm{\Lambda}^{(t+1)}\big)\geq G\big(\bm{\theta}^{(t+1)},\bm{\Lambda}^{(t)}\big)$ by summing the groupwise conditions over $j$, since the $\log|\bm{\Sigma}|$ term does not involve $\bm{\Lambda}$. Chaining the two displays proves the ascent. A monotone sequence that is bounded above converges.
+\end{proof}
+
+\begin{corollary}
+Assume in addition that for every $j$, the accepted point satisfies $\Phi_{j}\big(\bm{\theta}^{(t+1)},\bm{\lambda}_{j}^{(t+1)}\big)\geq\Phi_{j}\big(\bm{\theta}^{(t+1)},\hat{\bm{\lambda}}_{j}(\bm{\theta}^{(t+1)})\big)$. Then $G\big(\bm{\theta}^{(t+1)},\bm{\Lambda}^{(t+1)}\big)\geq\ell_{\text{LA}}\big(\bm{\theta}^{(t+1)}\big)$.
+\label{cor:G-dominates}
+\end{corollary}
+
+\begin{proof}
+Sum the assumed inequalities over $j$ and subtract $\frac{J}{2}\log\big|\bm{\Sigma}^{(t+1)}\big|$ from both sides. The left side is $G\big(\bm{\theta}^{(t+1)},\bm{\Lambda}^{(t+1)}\big)$ by \eqref{eq:G-def}. The right side is $G\big(\bm{\theta}^{(t+1)},\hat{\bm{\Lambda}}(\bm{\theta}^{(t+1)})\big)$, which equals $\ell_{\text{LA}}\big(\bm{\theta}^{(t+1)}\big)$ by the first identity of Lemma~\ref{lem:G-anchors}.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:newton-edgeworth}]
+At the $h$-mode, $\nabla_{\bm{\lambda}}h_{j}\big(\hat{\bm{\lambda}}_{j},\bm{\theta}\big)=\bm{0}$. Lemma~\ref{lem:Phi-grad} then gives $\nabla_{\bm{\lambda}}\Phi_{j}\big(\bm{\theta},\hat{\bm{\lambda}}_{j}\big)=-\frac{1}{2}\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle$, where all quantities are evaluated at $\hat{\bm{\lambda}}_{j}$. Under the stated approximation, $\big(\nabla^{2}_{\bm{\lambda}}\Phi_{j}\big)^{-1}\approx(-\mathbf{H}_{j})^{-1}=-\hat{\mathbf{S}}_{j}$. The Newton step for maximization is $\bm{\lambda}^{\mathrm{new}}=\hat{\bm{\lambda}}_{j}-\big(\nabla^{2}_{\bm{\lambda}}\Phi_{j}\big)^{-1}\nabla_{\bm{\lambda}}\Phi_{j}=\hat{\bm{\lambda}}_{j}-\big(-\hat{\mathbf{S}}_{j}\big)\Big(-\frac{1}{2}\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle\Big)=\hat{\bm{\lambda}}_{j}-\frac{1}{2}\hat{\mathbf{S}}_{j}\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle$. Comparing with the definition of $\bm{\mu}_{1,j}$ in \eqref{eq: edgeworth} identifies $\bm{\lambda}^{\mathrm{new}}-\hat{\bm{\lambda}}_{j}=\bm{\mu}_{1,j}$. The dropped term $-\frac{1}{2}\nabla^{2}_{\bm{\lambda}}\log|\mathbf{H}_{j}|$ consists of fourth derivatives of $h_{j}$ contracted with $\hat{\mathbf{S}}_{j}$ and of squared third-derivative contractions. Both are one order smaller than $\mathbf{H}_{j}$ in the per-group information, so the approximation is a Gauss--Newton-type simplification.
+\end{proof}
+
+\begin{remark}
+The tier list of the $\bm{\Lambda}$-block always contains $\bm{\lambda}_{j}^{(t)}$ itself, so condition (B) of Theorem~\ref{thm:G-non-decreasing} is always satisfiable and the algorithm never stalls on a failed line search. In the implementation, the curvature $\mathbf{H}_{j}^{(t)}$ entering \eqref{eq:Q-def} is recomputed exactly at the accepted $\bm{\lambda}_{j}^{(t)}$, not reused from the $h$-mode. This matches point (ii) of the consequences in Section~\ref{subsec:non-monotonicity}.
+\label{rem:tiers}
+\end{remark}
+
+\begin{remark}
+$G$, its sup-profile and $\ell_{\text{LA}}$ are all Laplace-family objects. Theorem~\ref{thm:G-non-decreasing} gives monotone ascent of $G$, and Corollary~\ref{cor:G-dominates} relates $G$ to $\ell_{\text{LA}}$ at the iterates. Monotonicity in the exact marginal likelihood is neither claimed nor obtainable by these means without exact E-steps.
+\label{rem:scope}
+\end{remark}

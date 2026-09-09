@@ -4,24 +4,22 @@
 The observed-data log-likelihood under the model of Chapter~\ref{cha:model-specification} is
 
 \begin{equation}
-    \ell(\bm{\theta})=\sum_{j=1}^{J}\sum_{i\in \mathcal{I}_{j}}\log p(\bm{y}_{ij}\mid \bm{\theta})=\sum_{j=1}^{J}\sum_{i\in \mathcal{I}_{j}}\log \int p(\bm{y}_{ij}\mid \bm{\lambda}_{j})p(\bm{\lambda}_{j}\mid \bm{\Sigma})\,d\bm{\lambda}_{j},
+    l(\bm{\theta})=\sum_{j=1}^{J}\sum_{i\in \mathcal{I}_{j}}\log p(\bm{y}_{ij}\mid \bm{\theta})=\sum_{j=1}^{J}\sum_{i\in \mathcal{I}_{j}}\log \int p(\bm{y}_{ij}\mid \bm{\lambda}_{j})p(\bm{\lambda}_{j}\mid \bm{\Sigma})\,d\bm{\lambda}_{j},
     \label{eq:log-lik-chap2}
 \end{equation}
 
-where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. The integral in \eqref{eq:log-lik-chap2} has no closed form, because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM. The standard approach in generalized linear mixed models is the Laplace approximation (\citep{Breslow_1993}, \citep{Tierney01031986}), which replaced the integral with a Gaussian approximation at the posterior mode.
+where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. The integral in \eqref{eq:log-lik-chap2} has no closed form, because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM. The standard approach in generalized linear mixed models is the Laplace approximation (\citep{Breslow1993}, \citep{Tierney1986}), which replaced the integral with a Gaussian approximation at the posterior mode.
 
 \iffalse
 \section{The Choice of Approximation Level}
 \label{sec:the-choice-of-approximation-level}
 
-A natural approach motivated by \citet{chiquet2018variational} and their PLN-PCA model approximates the posterior of the K-dimensional factor $p(\mathbf{f}_{j}\mid \bm{y}_{ij})$, which was adapted by \citet{mcgillycuddy2024parsimoniouslyfittinglargemultivariate} in their latent model structure. Since we assumed $K\ll Q$, this reduces the Newton-step Hessian from $Q\times Q$ to $K\times K$, which appears computationally attractive. However, this approach encounters two fundamental obstacles. 
+A natural approach motivated by \citet{Chiquet2018} and their PLN-PCA model approximates the posterior of the K-dimensional factor $p(\mathbf{f}_{j}\mid \bm{y}_{ij})$, which was adapted by \citet{mcgillycuddy2024} in their latent model structure. Since we assumed $K\ll Q$, this reduces the Newton-step Hessian from $Q\times Q$ to $K\times K$, which appears computationally attractive. However, this approach encounters two fundamental obstacles. 
 
 \paragraph*{Group Collapsing} Within group $j$, observations $\{i\in \mathcal{I}_{j}\}$ share the same factor $\mathbf{f}_{j}$ but carry distinct covariate vectors $\bm{v}_{ij}$ and total count $y_{ij\cdot}$. The factor-space log-posterior requires summing $\sum_{i\in \mathcal{I}_{j}}\log p(\bm{y}_{ij}\mid \mathbf{f}_{j})$, where each term involves its own normalizing constant $\sum_q \exp\bigl(\eta_{ijq}(\mathbf{f}_j)\bigr)$. A naive implementation collapses all observations in group $j$ into a single super-observation with total counts $\bm{y}_{\cdot j} = \sum_{i\in \mathcal{I}_{j}} \bm{y}_{ij}$ and averaged fixed effects $\bar{\bm{\eta}}_{j}$, treating the group as a single Multinomial draw. This is mathematically incorrect. The Multinomial log-normalizer does not linearize under summation, and the approximation error grows with within-group heterogeneity in $\bm{v}_{ij}$. 
 
 \paragraph*{Posterior Second-Moment Deflation} The factor-space Laplace posterior yields a second-moment matrix $\mathbf{W}_{f}=J^{-1}\sum_{j}(\hat{\mathbf{f}}_{j}\hat{\mathbf{f}}_{j}^{\top}+\hat{\mathbf{V}}_{j})$ that systematically underestimates $\mathbf{I}_{K}$ due to Laplace shrinkage. Because the M-step for $\mathbf{B}$ receives only $\mathbf{BW}_{f}\mathbf{B}^{\top}$ as its sufficient statistic for $\bm{\Sigma}$, the Rubin–Thayer algorithm (\citet{Rubin1982}) compensates by inflating $\hat{\mathbf{B}}$, leading to the error in estimation. 
 Thus, instead of approximate the posterior of $K$ dimensional latent factors, we do the approximation on Q dimensional group random effect $p(\bm{\lambda}_{j}\mid \bm{y}_{ij})$ directly and move the factor decomposition from the E-step to the M-step. The E-step treats $\bm{\lambda}_{j}$ as an unknown Q-vector with Gaussian prior $\mathcal{N}(\bm{0},\bm{\Sigma})$, then the M-step decomposes the resulting estimated covariance $\hat{\bm{\Sigma}}_{\text{obs}}$ into $\mathbf{BB}^{\top}+\sigma^{2}\mathbf{I}$.
-\fi
-\iffalse
 
 Before we lay out our detailed EM algorithm, we introduce three technical conditions, which will significantly simplify our presentation. Different from single scalar space, our parameter space $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ given by~\eqref{eq:log-lik-chap2} contains both scalar, vector and matrix.
 
@@ -51,14 +49,13 @@ $Q(\cdot\mid \bm{\theta^{*}})$ is $\mu$-smooth over $\Omega$, that is, for any $
         \| \nabla Q(\mathcal{M}(\bm{\theta})\mid \bm{\theta})-\nabla Q(\mathcal{M}(\bm{\theta})\mid \bm{\theta}^{*})\|\leq \tau \|\bm{\theta}-\bm{\theta}^{*}\|
     \end{equation}
 \end{condition}
-
 \fi
 
 \section{EM Algorithm \& Convergence}
 \label{sec: EM}
     For each group $j$, the log-posterior of $\bm{\lambda}_{j}$ is given by:
 \begin{equation}
-    \mathcal{L}(\bm{\lambda}_{j})=\sum_{i\in \mathcal{I}_{j}}\Bigl[\sum_{q}y_{ijq}\eta_{ijq}(\bm{\lambda}_{j})-y_{ij\cdot}\log \sum_{q}\exp\bigl(\eta_{ijq}(\bm{\lambda}_{j})\bigr)\Bigr]-\frac{1}{2}\bm{\lambda}_{j}^{\top}\bm{\Sigma}^{-1}\bm{\lambda}_{j},
+    \ell(\bm{\lambda}_{j})=\sum_{i\in \mathcal{I}_{j}}\Bigl[\sum_{q}y_{ijq}\eta_{ijq}(\bm{\lambda}_{j})-y_{ij\cdot}\log \sum_{q}\exp\bigl(\eta_{ijq}(\bm{\lambda}_{j})\bigr)\Bigr]-\frac{1}{2}\bm{\lambda}_{j}^{\top}\bm{\Sigma}^{-1}\bm{\lambda}_{j},
     \label{eq: estep-loglik}
 \end{equation}
 up to an additive constant independent of $\bm{\lambda}_{j}$, where 
@@ -181,10 +178,12 @@ requiring only $K\times K$ inversion.
 
 Chapter~\ref{cha:methodology} derived a correct and convergent Laplace-EM algorithm, but left its dominant per-iteration cost unaddressed. Each Newton step in E-step requires forming and solving the $Q\times Q$ system~\eqref{eq: hessian-equality} at cost $\mathcal{O}(I_{j}Q^{2}+Q^{3})$, in the meanwhile, each inner iteration of the M-step factor update~\eqref{eq: Rubin3}-\eqref{eq: Rubin4} requires forming $\bm{\Sigma}^{-1}$ densely at cost $\mathcal{O}(Q^{3})$. For large Q, these costs are not merely inconvenient but make the algorithm impractical. This chapter develops an exact acceleration method to remove this bottleneck by showing that the Poisson-Multinomial equivalence that already underlies the M-step can be redeployed via auxiliary-variable construction, which can remove the cross-category coupling from the E-step Hessian as well. 
 
-\section{PME Auxiliary-Variable Construction \& Woodbury Solve}
-\label{sec:auxiliary-variable-construction}
+\section{Three Methods for Rate \& Accuracy}
 
-Indirect inference (II) is a methodology for estimating the parameters of an intractable (generative) model on the basis of an alternative parametric (auxiliary) model that is both analytically and computationally easier to deal with. \citet{Drovandi_2015} introduced the parametric Bayesian indirect inference (pBII) methods 
+\subsection{PME Auxiliary-Variable Construction \& Woodbury Solve}
+\label{subsec:auxiliary-variable-construction}
+
+Indirect inference (II) is a methodology for estimating the parameters of an intractable (generative) model on the basis of an alternative parametric (auxiliary) model that is both analytically and computationally easier to deal with. \citet{Drovandi2015} introduced the parametric Bayesian indirect inference (pBII) methods 
 
 For a fixed group $j$, we introduce an auxiliary scalar $\xi_{i}$ per observation $i\in \mathcal{I}_{j}$ and define the Poisson surrogate log-posterior
 \begin{equation}
@@ -524,8 +523,200 @@ with $\mathbf{H}_{j}$ the Hessian of the true multinomial log-posterior $\ell$, 
 
 Although $\hat{\mathbf{S}}_{j}$ costs $\mathcal{O}(Q^{3})$, we prefer using the exact value instead of Poisson surrogate (except the cases with super large Q) because the calculation of $\hat{\bm{\Sigma}}_{\text{obs}}$ and Rubin-Thayer update~\eqref{eq: Rubin3}-\eqref{eq: Rubin4} are dependent of it. Any error in the curvature propagates into the parameter estimates. Proposition~\ref{prop:diff-s} shows that the surrogate Poisson over-states curvature by a positive-semi-definite amount, so the surrogate Laplace covariance $\hat{\mathbf{S}}_{j}^{P}$ in \eqref{eq:covariance-relation} under-states the posterior variance.Through \eqref{eq:null-space-decomp} this bias falls hardest on the leftover directions that $\sigma^{2}$ alone controls, and it feeds a downward bias into $\sigma^{2}$ at the next M-step. Quantifying and removing this bias is the purpose of the ordering established next and of the hybrid strategy that follows.
 
-\section{Consistency \& Asymptotics}
+\subsection{Edgeworth Correction for Group Effects}
+\label{subsec:corrected-lambda}
 
+The exact E-step needs posterior moments of $\bm{\lambda}$. For each cluster group $j$, it needs the posterior mean $\mathbb{E}\left[\bm{\lambda}_j \mid \bm{y}_j,  \bm{\theta}\right]$ and the posterior second moment. The Laplace E-step does not compute these. It computes the posterior mode $\hat{\bm{\lambda}}_j$ and the inverse curvature $\hat{\mathbf{S}}_j$ at the mode. It then uses the mode in place of the mean. For a Gaussian posterior, this substitution is exact, because the mode and the mean coincide. Our posterior is not Gaussian. The multinomial likelihood is skewed in $\bm{\lambda}$. A skewed density puts its mean away from the mode. So the Laplace E-step feeds a systematically shifted location into every M-step, and the shift propagates into the parameter estimates. \citet{katsevich2024} addressed the same defect for general Bayesian posteriors. They built a higher-order accurate Laplace approximation by attaching a skew correction to the Gaussian factor of the Laplace approximation, and the corrected location moves the mode in the direction of the skew. Motivated by their construction, we derive the matching correction for multinomial responses in closed form.
+
+For group $j$, the log-posterior of $\bm{\lambda}_{j}$ is in \eqref{eq:log-lik-chap2} with prior $\bm{\lambda}_{j}\sim\mathcal{N}(\bm{0},\bm{\Sigma})$. We keep the notation $\hat{\bm{\lambda}}_{j}$ for the Laplace mode and $\hat{\mathbf{S}}_{j}$ for the inverse curvature at the mode, and write $\mathrm{lse}(\bm{\eta}_{i}):=\log\sum_{q=1}^{Q}\exp(\eta_{iq})$. The prior kernel is quadratic, so all third derivatives of the log-posterior come from the likelihood. We collect them in the $Q\times Q\times Q$ tensor,
+\begin{equation}
+    \mathbf{T}_{j,qrs}\left(\bm{\lambda}\right) \;=\; \sum_{i \in I_j} y_{ij\cdot}\, \frac{\partial^3\, \mathrm{lse}(\bm{\eta}_i)}{\partial \eta_q\, \partial \eta_r\, \partial \eta_s},
+    \label{eq:third-tensor}
+\end{equation}
+which is fully symmetric in $(q,r,s)$ because partial derivatives commute. For a symmetric matrix $\mathbf{S}$, define the contraction,
+\begin{equation}
+    \big\langle \mathbf{T}_j, \mathbf{S} \big\rangle_q \;=\; \sum_{r=1}^Q \sum_{s=1}^Q \mathbf{T}_{j,qrs}\, \mathbf{S}_{rs}.
+    \label{eq:T-contraction}
+\end{equation}
+All quantities below are per group, and we drop the subscript $j$ where no confusion arises. Unless stated otherwise, $\mathbf{T}$ and $\hat{\mathbf{S}}$ are evaluated at the mode $\hat{\bm{\lambda}}$. The corrected E-step adds the leading-order mean shift back to the mode. The next proposition gives the shift in closed form and isolates everything else in an explicit remainder. The proof is in Appendix~\ref{app:edgeworth-proof}.
+
+\begin{proposition}
+Fix $\bm{\theta}$ with $\sigma^{2}>0$ and fix a group $j$. Then all posterior moments of $\bm{\lambda}_{j}$ exist, and the posterior mean admits the exact decomposition
+\begin{equation}
+    \mathbb{E}\big[\bm{\lambda}_{j}\mid\bm{y}_{j},\bm{\theta}\big]=\hat{\bm{\lambda}}_{j}+\bm{\mu}_{1,j}+\bm{r}_{j},\qquad\bm{\mu}_{1,j}=-\tfrac{1}{2}\,\hat{\mathbf{S}}_{j}\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle,
+    \label{eq: edgeworth}
+\end{equation}
+where the remainder $\bm{r}_{j}$ is given in closed form in \eqref{eq:remainder-def}. In the order bookkeeping of Remark~\ref{rem:order-bookkeeping}, $\bm{\mu}_{1,j}$ is the entire leading-order term of the mean expansion, and $\bm{r}_{j}$ is two orders smaller, because every intermediate-order candidate vanishes by Gaussian parity.
+\label{prop:edgeworth-mean}
+\end{proposition}
+For the multinomial likelihood the contraction has a closed form, proved as Lemma~\ref{lem:T-closed-form},
+\begin{equation}
+    \big\langle\mathbf{T}_{j},\mathbf{S}\big\rangle_{q}=\sum_{i\in I_{j}}y_{ij\cdot}\,p_{iq}\Big[\mathbf{S}_{qq}-2\,\big(\mathbf{S}\bm{p}_{i}\big)_{q}-\bm{p}_{i}^{\top}\mathrm{diag}(\mathbf{S})+2\,\bm{p}_{i}^{\top}\mathbf{S}\bm{p}_{i}\Big],
+    \label{eq:T-contraction-multinomial}
+\end{equation}
+where $\bm{p}_{i}$ is the fitted probability vector of observation $i$, evaluated at $\hat{\bm{\lambda}}$ in the E-step. No $Q\times Q\times Q$ object is ever formed. The cost per observation is one matrix-vector product $\mathbf{S}\bm{p}_{i}$ and a few inner products. We verified \eqref{eq:third-tensor} against finite differences of the Hessian and \eqref{eq:T-contraction-multinomial} against a brute-force contraction of the full tensor, to relative errors $10^{-6}$ and $10^{-16}$ respectively.
+ 
+The accuracy gain has a simple structure. Relative to the posterior standard deviation, the mode approximates the mean to first order in the expansion parameter $\delta$ of Remark~\ref{rem:order-bookkeeping}. Adding $\bm{\mu}_{1}$ removes the entire first-order error. The second-order term of the mean expansion vanishes by parity, so the corrected location is accurate to third order. The gain is two orders in $\delta$, not one. \citet{Katsevich2024} prove finite-sample bounds of this form, with explicit dependence on the dimension, for a skew-corrected approximation built from the same third-derivative information. Their worked multinomial example uses the same $\mathrm{diag}(\bm{p})-\bm{p}\bm{p}^{\top}$ curvature structure, and their location correction matches \eqref{eq: edgeworth} formula for formula. Our posterior is strictly log-concave with sub-Gaussian tails (Lemma~\ref{lem:posterior-tails}), which is the structural property that drives bounds of this type.
+ 
+The correction has a clean reading. $\mathbf{T}$ measures the skewness of the log-likelihood. $\hat{\mathbf{S}}$ measures the posterior spread. The contraction $\langle\mathbf{T},\hat{\mathbf{S}}\rangle$ asks how much skewness the posterior actually feels at its own scale. The final multiplication by $\hat{\mathbf{S}}$ converts that felt skewness into a location shift in the metric of the posterior. The sign also reads off directly. Suppose the log-density falls more slowly on one side of the mode than on the other. Then the density has a heavier shoulder on that side. The mean moves toward the heavy shoulder. The mode does not move. The correction $\bm{\mu}_{1}$ is exactly this displacement, computed at leading order. For the multinomial likelihood the third derivative is not identically zero, unlike the Gaussian case, and it vanishes only in symmetric special configurations. Small counts and unbalanced $\bm{p}_{i}$ make it large. This is why the correction matters most for groups with few observations or extreme category probabilities.
+ 
+\subsection{Non-monotonicity}
+\label{subsec:non-monotonicity}
+
+% The likelihood or log-likelihood keep monotonous in simple EM algorithm through M-step. However, this property is challenged in Laplace-EM setup, especially for the approximation of $\hat{\bm{\lambda}}$ and $\hat{\mathbf{S}}$. \citet{lee2024} stated that the Laplacian (variant) EM algorithm loses this monotonicity due to the combination with Laplace approximation. They avoided this problem by choosing precise and sufficient initial values for more reliable convergence instead of establishing a new method. We face this obstacle when test the corrected $\bm{\lambda}$ and combo (corrected $\bm{\lambda}$ + frozen $\hat{\sigma}^{2}$) algorithms, see Figure~\ref{fig:unstable-log-lik}. Both corrected $\bm{\lambda}$ and combo achieve the minimum of B\_dist in $10$-th iteration, and then go higher and finally achieve worse results. Similar trends happen on the estimation of $\sigma^{2}$. Check of values of negative log-likelihood demonstrates a wired case that the monotonicity has been challenged after $10$-th iteration, which causes the estimates to fluctuate erratically and results in worse parameter estimates after final convergence. This obstacle happens on the base model as well, corroborating the work by \citet{lee2024}. They solved this problem by adjusting the initial values that to be close near the true value, however, we cannot do this on real data without true value of parameters given.
+
+In exact EM, the observed-data log-likelihood never decreases after an M-step. This guarantee is lost once the E-step moments are replaced by Laplace approximations. \citet{lee2024} reported the same loss for their Laplace-variant EM. They did not repair the algorithm. They instead relied on accurate initial values to obtain reliable convergence. We meet the same obstacle when testing the corrected $\bm{\lambda}$ algorithm, see Figure~\ref{fig:unstable-log-lik}. Both runs reach their minimal \texttt{B\_dist} around the $10$-th iteration, then drift away from the truth and end at worse estimates. The trace of $\hat{\sigma}^{2}$ shows the same pattern. The trace of the approximate log-likelihood confirms the cause. Its value rises, peaks near the $10$-th iteration, and then declines. The iterates fluctuate afterwards, and the final estimates are worse than the best intermediate ones. The base algorithm behaves in the same way, which corroborates \citet{lee2024}. Their initial-value remedy is not available on real data. The true parameters are unknown there, so closeness of a starting value to the truth cannot be checked.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figs/log-lik-unstable.pdf}
+    \caption{Traces of the approximate log-likelihood, \texttt{B\_dist} and $\hat{\sigma}^{2}$ for the base, corrected $\bm{\lambda}$ and combo algorithms on simulated data ($Q=$\,, $J=$\,).}
+    \label{fig:unstable-log-lik}
+\end{figure}
+
+The source of the failure is visible in the objective itself. Write $\hat{\bm{\lambda}}_{j}(\bm{\theta})$ for the mode of the group integrand $h_{j}(\cdot,\bm{\theta})$ and $\mathbf{H}_{j}(\bm{\lambda},\bm{\theta}):=-\nabla^{2}_{\bm{\lambda}}h_{j}(\bm{\lambda},\bm{\theta})$ for its curvature. The Laplace approximation to the marginal log-likelihood is
+\begin{equation}
+    \ell_{\text{LA}}(\bm{\theta})=\sum_{j=1}^{J}\left[h_{j}\big(\hat{\bm{\lambda}}_{j}(\bm{\theta}),\bm{\theta}\big)-\frac{1}{2}\log\Big|\mathbf{H}_{j}\big(\hat{\bm{\lambda}}_{j}(\bm{\theta}),\bm{\theta}\big)\Big|\right]-\frac{J}{2}\log|\bm{\Sigma}|,
+    \label{eq:ellLA}
+\end{equation}
+with the details given in Appendix~\ref{app:mm-proofs}. A Laplace-EM M-step ascends only the $h$-part at the frozen mode. It treats the log-determinant as a constant. In our model the log-determinant is not a constant. It depends on $\bm{\theta}$ through two channels. The first channel is direct, since $\mathbf{H}_{j}$ contains $\bm{\theta}$. The second channel runs through the mode, since $\hat{\bm{\lambda}}_{j}(\bm{\theta})$ moves with $\bm{\theta}$. A $\bm{\theta}$-update can therefore raise the $h$-part while raising the curvature penalty by more. The approximate evidence then drops. This is exactly the pattern in Figure~\ref{fig:unstable-log-lik}.
+
+% \citet{Yue2026} established majorize-minimize (MM) Laplace-EM algorithm to deal with this non-monotonicity. They used a surrogate function to replace simply Q-function. Given the current iterate estimated parameter $\bm{\Psi}^{(t)}$, they constructed a surrogate lower bound $Q_{\text{LA}}\left(\bm{\Psi} \mid \bm{\Psi}^{(t)}\right)$ for $\ell_{\text{LA}}\left(\bm{\Psi}\right)$ and maximize it over $\bm{\Psi}$, thereby increasing $\ell_{\text{LA}}\left(\bm{\Psi}\right)-\ell_{\text{LA}}\left(\bm{\Psi}^{(t)}\right)$. Concretely, $Q_{\text{LA}}$ is obtained by a Laplace expansion of the subject-level integral at the posterior mode $\hat{\bm{\lambda}}$ computed by the negative Hessian $\mathbf{H}$. 
+
+\citet{Yue2026} met the same instability in a mixed-effects mixture-of-experts model with Gaussian responses and stabilized their Laplace-EM with a majorize-minimize (MM) strategy, combining a Jensen bound on the mixture term with a tangent-plane linearization of the log-determinant at the current curvature. Two features of their treatment matter here. First, their surrogate freezes the current mode inside the $h$-part, and the resulting ascent of $\ell_{\text{LA}}$ is asserted rather than derived from a minorization property. Second, the benchmark case in which no repair is needed at all is the single-expert Gaussian model. There the integrand is exactly quadratic in the random effect, the curvature does not depend on it, and the third-derivative tensor vanishes identically. Three consequences follow in that case. The Laplace approximation is exact. The mode channel in \eqref{eq:ellLA} is dead, because $\log|\mathbf{H}_{j}|$ cannot move when $\hat{\bm{\lambda}}_{j}(\bm{\theta})$ moves. And the log-determinant is a constant in the mean parameters, so maximizing $\ell_{\text{LA}}$ over that block reduces to maximizing $\sum_{j}h_{j}$. None of these facts survives once the integrand is not quadratic, which is the situation both for their expert mixture and for our multinomial responses. Our curvature depends on $\bm{\lambda}$ through the fitted probabilities, so both channels are alive. A direct transplant of a frozen-mode surrogate onto $\ell_{\text{LA}}$ therefore fails, and Proposition~\ref{prop:naive-obstruction} in Appendix~\ref{app:mm-proofs} makes the failure precise. The naive surrogate that freezes the mode and the curvature cannot be a tangent global minorizer of $\ell_{\text{LA}}$ at any iterate where the log-determinant has a nonzero gradient. The missing gradient is carried by $\partial_{\bm{\theta}}\mathbf{H}_{j}$ and by the contraction $\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle$, and both vanish for the Gaussian mean parameters. The obstruction is first order, so it does not shrink near convergence. This is why the Gaussian construction cannot be inherited and a new monotone target is needed.
+
+
+Following the general MM principle, we seek a surrogate $Q\big(\bm{\theta}\mid\bm{\theta}^{(t)}\big)$ with two properties for a suitable objective $F$. Property (P1) is global minorization, $Q\big(\bm{\theta}\mid\bm{\theta}^{(t)}\big)\leq F(\bm{\theta})$ for all $\bm{\theta}$. Property (P2) is tangency, $Q\big(\bm{\theta}^{(t)}\mid\bm{\theta}^{(t)}\big)=F\big(\bm{\theta}^{(t)}\big)$. Together they give the ascent chain
+\begin{equation}
+    F\big(\bm{\theta}^{(t+1)}\big)\geq Q\big(\bm{\theta}^{(t+1)}\mid\bm{\theta}^{(t)}\big)\geq Q\big(\bm{\theta}^{(t)}\mid\bm{\theta}^{(t)}\big)=F\big(\bm{\theta}^{(t)}\big),
+    \label{eq:mm-ascent-chain}
+\end{equation}
+which is valid whenever the update does not decrease the surrogate. Exact maximization of $Q$ is never required. The whole difficulty is the choice of $F$. Proposition~\ref{prop:naive-obstruction} rules out $F=\ell_{\text{LA}}$ for the transplanted surrogate. We therefore change the objective instead of the inequality.
+ 
+The repair promotes the modes to free coordinates. Define the group objective with a free expansion point $\bm{\lambda}$,
+\begin{equation}
+    \Phi_{j}(\bm{\theta},\bm{\lambda}):=h_{j}(\bm{\lambda},\bm{\theta})-\frac{1}{2}\log\big|\mathbf{H}_{j}(\bm{\lambda},\bm{\theta})\big|,
+    \label{eq:Phi-def}
+\end{equation}
+and for $\bm{\Lambda}=(\bm{\lambda}_{1},\dots,\bm{\lambda}_{J})$ define the joint objective
+\begin{equation}
+    G(\bm{\theta},\bm{\Lambda}):=\sum_{j=1}^{J}\Phi_{j}(\bm{\theta},\bm{\lambda}_{j})-\frac{J}{2}\log|\bm{\Sigma}|.
+    \label{eq:G-def}
+\end{equation}
+$G$ is an explicit smooth function of all its arguments. No implicit function $\hat{\bm{\lambda}}_{j}(\bm{\theta})$ appears in it. Two identities anchor $G$ to \eqref{eq:ellLA}, and both are proved as Lemma~\ref{lem:G-anchors}. First, $G\big(\bm{\theta},\hat{\bm{\Lambda}}(\bm{\theta})\big)=\ell_{\text{LA}}(\bm{\theta})$, so the profile of $G$ at the $h$-modes is exactly the Laplace evidence. Second, $\max_{\bm{\Lambda}}G(\bm{\theta},\bm{\Lambda})\geq\ell_{\text{LA}}(\bm{\theta})$, so the sup-profile dominates the Laplace evidence. The maximizing coordinate is the curvature-penalized mode $\bar{\bm{\lambda}}_{j}=\arg\max_{\bm{\lambda}}\Phi_{j}(\bm{\theta},\bm{\lambda})$ rather than the $h$-mode. Our algorithm ascends $G$ blockwise, in $\bm{\theta}$ with $\bm{\Lambda}$ frozen and in $\bm{\Lambda}$ with $\bm{\theta}$ frozen.
+ 
+The $\bm{\theta}$-block needs a surrogate, because $\log\big|\mathbf{H}_{j}(\bm{\lambda}_{j}^{(t)},\bm{\theta})\big|$ is still a complicated function of $\bm{\theta}$. Only one inequality is used. The log-determinant is concave on positive definite matrices, so it lies below its tangent plane at the current curvature $\mathbf{H}_{j}^{(t)}:=\mathbf{H}_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}^{(t)}\big)$. With $\mathbf{S}_{j}^{(t)}:=\big(\mathbf{H}_{j}^{(t)}\big)^{-1}$, this reads
+\begin{equation}
+    -\log|\mathbf{A}|\geq-\log\big|\mathbf{H}_{j}^{(t)}\big|-\operatorname{tr}\Big(\mathbf{S}_{j}^{(t)}\big(\mathbf{A}-\mathbf{H}_{j}^{(t)}\big)\Big)
+    \label{eq:logdet-tangent}
+\end{equation}
+for every positive definite $\mathbf{A}$, with equality if and only if $\mathbf{A}=\mathbf{H}_{j}^{(t)}$ (Lemma~\ref{lem:logdet-tangent}). The base point of the tangent plane must be the current iterate. This choice makes the bound linear in the unknown curvature and exact at $\bm{\theta}^{(t)}$. Applying \eqref{eq:logdet-tangent} with $\mathbf{A}=\mathbf{H}_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}\big)=-\nabla^{2}_{\bm{\lambda}}h_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}\big)$ gives the surrogate
+\begin{equation}
+    Q\big(\bm{\theta}\mid\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big):=\sum_{j=1}^{J}\left[h_{j}\big(\bm{\lambda}_{j}^{(t)},\bm{\theta}\big)-\frac{1}{2}\log\big|\mathbf{H}_{j}^{(t)}\big|-\frac{1}{2}\operatorname{tr}\Big(\mathbf{S}_{j}^{(t)}\big(-\nabla^{2}_{\bm{\lambda}}h_{j}(\bm{\lambda}_{j}^{(t)},\bm{\theta})-\mathbf{H}_{j}^{(t)}\big)\Big)\right]-\frac{J}{2}\log|\bm{\Sigma}|.
+    \label{eq:Q-def}
+\end{equation}
+The tangency structure is now transparent. The $h$-terms and the $\log|\bm{\Sigma}|$ term are exact functions of $\bm{\theta}$, so no inequality touches them. The only inequality is \eqref{eq:logdet-tangent}, which is global in $\bm{\theta}$ and exact at $\bm{\theta}=\bm{\theta}^{(t)}$, where the trace term vanishes. Hence $Q\big(\cdot\mid\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)$ satisfies (P1) and (P2) for $F(\bm{\theta})=G\big(\bm{\theta},\bm{\Lambda}^{(t)}\big)$ (Proposition~\ref{prop:Q-minorize}). The everywhere-tangent lower bound therefore refers to $G\big(\cdot,\bm{\Lambda}^{(t)}\big)$ and not to $\ell_{\text{LA}}$. This is the price of the construction. By Proposition~\ref{prop:naive-obstruction} the price is unavoidable at first order. $G$ is the quantity our algorithm can make monotone.
+ 
+\begin{theorem}
+Assume $\sigma^{2}>0$ at every iterate, so that $\mathbf{H}_{j}(\bm{\lambda},\bm{\theta})\succ0$ for all arguments by Lemma~\ref{lem:H-pd}. Generate iterates by repeating, for $t=0,1,2,\ldots$:
+\begin{enumerate}
+    \item[(A)] $\bm{\theta}$-block: choose any $\bm{\theta}^{(t+1)}$ with $Q\big(\bm{\theta}^{(t+1)}\mid\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)\geq Q\big(\bm{\theta}^{(t)}\mid\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)$;
+    \item[(B)] $\bm{\Lambda}$-block: choose any $\bm{\Lambda}^{(t+1)}$ with $\Phi_{j}\big(\bm{\theta}^{(t+1)},\bm{\lambda}_{j}^{(t+1)}\big)\geq\Phi_{j}\big(\bm{\theta}^{(t+1)},\bm{\lambda}_{j}^{(t)}\big)$ for every $j=1,\dots,J$.
+\end{enumerate}
+Then $G\big(\bm{\theta}^{(t+1)},\bm{\Lambda}^{(t+1)}\big)\geq G\big(\bm{\theta}^{(t)},\bm{\Lambda}^{(t)}\big)$ for every $t$. The sequence $G^{(t)}$ is non-decreasing and converges whenever it is bounded above.
+\label{thm:G-non-decreasing}
+\end{theorem}
+ 
+The proof is in Appendix~\ref{app:mm-proofs}. Two remarks connect Theorem~\ref{thm:G-non-decreasing} back to the likelihood. Neither block requires exact maximization, so inexact and backtracked updates are covered. If in addition each accepted $\bm{\lambda}_{j}^{(t+1)}$ dominates the fresh $h$-mode in $\Phi_{j}$, then $G^{(t+1)}\geq\ell_{\text{LA}}\big(\bm{\theta}^{(t+1)}\big)$, so the monotone quantity sits above the Laplace evidence at the iterates (Corollary~\ref{cor:G-dominates}). This extra condition is available for free when the $h$-mode is kept in the candidate list of the $\bm{\Lambda}$-block.
+ 
+Condition (B) only asks each $\Phi_{j}(\bm{\theta},\cdot)$ to go up. By Lemma~\ref{lem:Phi-grad}, the gradient of $\Phi_{j}$ in $\bm{\lambda}$ is
+\begin{equation}
+    \nabla_{\bm{\lambda}}\Phi_{j}(\bm{\theta},\bm{\lambda})=\nabla_{\bm{\lambda}}h_{j}(\bm{\lambda},\bm{\theta})-\frac{1}{2}\big\langle\mathbf{T}_{j}(\bm{\lambda},\bm{\theta}),\mathbf{H}_{j}^{-1}(\bm{\lambda},\bm{\theta})\big\rangle,
+    \label{eq:Phi-grad}
+\end{equation}
+where $\mathbf{T}_{j}$ is the third-derivative tensor of $h_{j}$ and $\langle\cdot,\cdot\rangle$ is the contraction defined in \eqref{eq:T-contraction}. The curvature-penalized mode $\bar{\bm{\lambda}}_{j}$ solves $\nabla_{\bm{\lambda}}\Phi_{j}=\bm{0}$. The $h$-mode $\hat{\bm{\lambda}}_{j}$ solves the same equation with the second term dropped. The natural update for condition (B) is one Newton step for $\Phi_{j}$ started at the cheap point $\hat{\bm{\lambda}}_{j}$.
+ 
+\begin{proposition}
+Fix $\bm{\theta}$ and start at the $h$-mode $\hat{\bm{\lambda}}_{j}$. Approximate the Hessian of $\Phi_{j}$ by $\nabla^{2}_{\bm{\lambda}}\Phi_{j}\approx\nabla^{2}_{\bm{\lambda}}h_{j}=-\mathbf{H}_{j}$, which drops only the curvature of the penalty term. Then the Newton step for maximizing $\Phi_{j}$ is
+\begin{equation}
+    \bm{\lambda}^{\mathrm{new}}=\hat{\bm{\lambda}}_{j}-\frac{1}{2}\hat{\mathbf{S}}_{j}\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle=\hat{\bm{\lambda}}_{j}+\bm{\mu}_{1,j},
+    \label{eq:newton-step}
+\end{equation}
+where $\bm{\mu}_{1,j}=-\frac{1}{2}\hat{\mathbf{S}}_{j}\big\langle\mathbf{T}_{j},\hat{\mathbf{S}}_{j}\big\rangle$ is the Edgeworth mean correction of \eqref{eq: edgeworth}.
+\label{prop:newton-edgeworth}
+\end{proposition}
+ 
+The proof is in Appendix~\ref{app:mm-proofs}. The same first-order object is reached by two independent routes. One route is the Edgeworth expansion of the posterior mean around the Laplace mode. The other route is the stationarity condition of the MM $\bm{\Lambda}$-block. Three consequences follow.
+\begin{enumerate}
+    \item The corrected E-step that we already tested is, to leading order, exactly the E-step the monotone algorithm needs. This explains why lambda correction term improves the estimation of $\mathbf{B}$ so consistently.
+    \item It also explains why the correction alone does not restore monotonicity. The corrected algorithm still misses three things. (i) It drops the curvature-feedback term in the $\bm{\theta}$-update, i.e. the trace term of \eqref{eq:Q-def}. (ii) It evaluates the covariance $\hat{\mathbf{S}}_{j}$ at the $h$-mode instead of the exact curvature $\bar{\mathbf{S}}_{j}$ at the accepted $\bm{\lambda}_{j}$. (iii) It never checks that $\Phi_{j}$ actually went up.
+    \item Point (iii) is cheap to fix. Evaluate $\Phi_{j}$ at $\hat{\bm{\lambda}}_{j}+c\,\bm{\mu}_{1,j}$ for $c\in\{1,\tfrac{1}{2},\tfrac{1}{4},\cdots\}$, fall back to $c=0$, and finally keep $\bm{\lambda}_{j}^{(t)}$ unchanged. Condition (B) then always holds, because the last fallback is always available. One evaluation of $\Phi_{j}$ costs one multinomial log-likelihood, one quadratic form, and one Cholesky log-determinant. Choosing the best candidate from this list, rather than the first acceptable one, additionally activates Corollary~\ref{cor:G-dominates}.
+\end{enumerate}
+ 
+Figure~\ref{fig:G-stable} reports the test on simulated data. The monitored quantity $G$ is non-decreasing along the whole run and converges before the iteration cap, as Theorem~\ref{thm:G-non-decreasing} guarantees. The comparison with the likelihood-criterion runs is honest rather than uniformly favorable. The minimal \texttt{B\_dist} reached under the likelihood criterion is slightly lower than the value returned under the $G$-criterion, so stopping on $G$ carries a small bias for $\mathbf{B}$. Moreover, \texttt{B\_dist} itself is not monotone even while $G$ is non-decreasing. Monotonicity of the objective therefore stabilizes the run, but it does not by itself locate the best $\mathbf{B}$ along the trajectory. This remains a real difficulty for estimation on real data, where \texttt{B\_dist} cannot be observed.
+ 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.99\textwidth]{figs/G-crition.pdf}
+    \caption{Parameter estimation under the $G$-ascent algorithm compared with the likelihood convergence criterion.}
+    \label{fig:G-stable}
+\end{figure}
+
+\section{Asymptotical Properties}
+\label{sec:asymptotical-properties}
+
+\iffalse
+\subsection{Consistency and Asymptotic Normality of the Computable Estimators}
+\label{subsec:la-g-asymptotics}
+
+The exact-likelihood theory of Sections~\ref{sec:step0-identification}--\ref{sec:step2-normality} concerns the marginal maximum likelihood estimator. The algorithms of this thesis never touch the exact criterion. Laplace-EM targets $\ell_{\text{LA}}$ of \eqref{eq:ellLA}, and the monotone algorithm of Section~\ref{subsec:non-monotonicity} ascends $G$, whose profile over the free modes is $\ell_{G}(\bm{\theta}):=\max_{\bm{\Lambda}}G(\bm{\theta},\bm{\Lambda})$, with $\ell_{G}\geq\ell_{\text{LA}}$ by Lemma~\ref{lem:G-anchors}. Write $\ell_{J}(\bm{\theta}):=\sum_{j=1}^{J}\log L_{j}(\bm{\theta})$ for the exact marginal log-likelihood. This subsection establishes consistency and asymptotic normality for the maximizers of both computable criteria,
+\begin{equation}
+    \hat{\bm{\theta}}_{\text{LA}}:=\arg\max_{\bm{\theta}\in\Theta}\ell_{\text{LA}}(\bm{\theta}),\qquad\hat{\bm{\theta}}_{G}:=\arg\max_{\bm{\theta}\in\Theta}\ell_{G}(\bm{\theta}),
+    \label{eq:computable-estimators}
+\end{equation}
+with ties broken by any measurable selection, and shows that the two estimators are asymptotically equivalent. The proof scheme follows \citet{Yue2026}: a uniform law of large numbers, a well-separated-maximum argument, and a score expansion under linear information growth for the per-group curvature. The structural difference from their treatment is stated in the comparison paragraph below.
+
+Two error terms organize the whole analysis. Define $E_{\text{LA}}(\bm{\theta}):=\ell_{\text{LA}}(\bm{\theta})-\ell_{J}(\bm{\theta})$ and $E_{G}(\bm{\theta}):=\ell_{G}(\bm{\theta})-\ell_{\text{LA}}(\bm{\theta})$, so that each computable criterion equals the exact likelihood plus a correction. Write $N_{j}:=\sum_{i\in I_{j}}y_{ij\cdot}$ for the total count of group $j$ and $N:=\min_{j}N_{j}$. We work under the following conditions.
+\begin{enumerate}
+    \item[(D1)] Sampling and regime. Groups are independent, $J\to\infty$, and $Q$ and $K$ are fixed. The per-observation totals satisfy $y_{ij\cdot}\leq\bar{m}$ and all covariates lie in a fixed compact set. The group totals satisfy $N\to\infty$ and $\max_{j}N_{j}\leq\kappa\min_{j}N_{j}$ for a fixed $\kappa<\infty$.
+    \item[(D2)] Parameter space. $\Theta$ is compact, $\bm{\theta}^{*}$ is interior, $\sigma^{2}\geq\sigma^{2}_{\min}>0$ on $\Theta$, and $\mathbf{B}$ obeys the PLT normalization of Section~\ref{sec:identifiability}.
+    \item[(D3)] Exact-likelihood package. (i) $\sup_{\Theta}|J^{-1}\ell_{J}-\bar{\ell}|\xrightarrow{p}0$; (ii) $\bar{\ell}$ is continuous with a unique, well-separated maximum at $\bm{\theta}^{*}$; (iii) $J^{-1/2}\nabla\ell_{J}(\bm{\theta}^{*})\xrightarrow{d}\mathcal{N}(\bm{0},\bar{\mathbf{I}}(\bm{\theta}^{*}))$ with $\bar{\mathbf{I}}(\bm{\theta}^{*})\succ0$; (iv) $-J^{-1}\nabla^{2}\ell_{J}(\bm{\theta}_{J})\xrightarrow{p}\bar{\mathbf{I}}(\bm{\theta}^{*})$ along every sequence $\bm{\theta}_{J}\xrightarrow{p}\bm{\theta}^{*}$. These are exactly the uniform concentration, identification, score CLT and Hessian convergence results of Sections~\ref{sec:step1-concentration}, \ref{sec:step0-identification} and \ref{sec:step2-normality}, and they enter only as inputs.
+    \item[(D4)] Information growth. There are $c_{0},r_{0}>0$ with $\mathbf{H}_{j}(\bm{\lambda},\bm{\theta})\succeq c_{0}N_{j}\mathbf{I}_{Q}$ whenever $\|\bm{\lambda}-\hat{\bm{\lambda}}_{j}(\bm{\theta})\|\leq r_{0}$, for every $\bm{\theta}\in\Theta$ and every $j$. This is the analogue of condition (B3) of \citet{Yue2026}, and it strengthens the global floor $\mathbf{H}_{j}\succeq\bm{\Sigma}^{-1}$ of Lemma~\ref{lem:H-pd} on a ball around the mode.
+    \item[(D5)] Error derivatives. On a fixed neighborhood of $\bm{\theta}^{*}$, $\|\nabla E_{\text{LA}}\|\leq CJ/N$, $\|\nabla^{2}E_{\text{LA}}\|\leq CJ/N$ and $\|\nabla^{2}E_{G}\|\leq CJ/N$. The value-level analogues and the bound on $\nabla E_{G}$ are proved in Proposition~\ref{prop:criteria-gap} below; (D5) is the remaining derivative-level control, in the spirit of the approximate-likelihood framework of \citet{Ogden2017}, and its leading term is the object expanded in Section~\ref{sec:gap-one}.
+\end{enumerate}
+
+The first result quantifies how far the computable criteria sit from the exact likelihood. The per-group derivative-scale bounds it uses are automatic for multinomial responses and are recorded as Lemma~\ref{lem:tensor-scale}, the analogue of condition (B4) of \citet{Yue2026}.
+
+\begin{proposition}
+Assume (D1), (D2) and (D4). There are $N_{0}$ and $C$, depending only on $Q$, $K$, $\Theta$, the design bounds and $(c_{0},r_{0})$, such that for every $\bm{\theta}\in\Theta$ and every $j$ with $N_{j}\geq N_{0}$ the following hold. First, $\ell_{J}(\bm{\theta})=\ell_{\text{LA}}(\bm{\theta})+\sum_{j=1}^{J}\log Z_{j}(\bm{\theta})$, where $Z_{j}(\bm{\theta})$ is the group-$j$ normalizing ratio of \eqref{eq:posterior-tilt}, and $|\log Z_{j}(\bm{\theta})|\leq C/N_{j}$. Second, the curvature-penalized mode $\bar{\bm{\lambda}}_{j}(\bm{\theta})$ is unique and satisfies $\|\bar{\bm{\lambda}}_{j}-\hat{\bm{\lambda}}_{j}\|\leq C/N_{j}$ and $\bar{\bm{\lambda}}_{j}=\hat{\bm{\lambda}}_{j}+\bm{\mu}_{1,j}+O(N_{j}^{-2})$, and $0\leq E_{G}(\bm{\theta})\leq C\sum_{j}N_{j}^{-1}$. Third, $\|\nabla E_{G}(\bm{\theta})\|\leq C\sum_{j}N_{j}^{-1}$. In particular $\sup_{\Theta}|\ell_{A}-\ell_{J}|\leq C\kappa J/N$ for $A\in\{\text{LA},G\}$.
+\label{prop:criteria-gap}
+\end{proposition}
+
+The proof is in Appendix~\ref{app:asymptotics-proofs}. The reading is simple. Both criteria differ from the exact likelihood by $O(J/N)$ in value, the $G$-versus-LA gap is one-sided and of the same order, and the leading terms of the two scores cancel exactly, through the same object $\bm{\mu}_{1,j}$ that defines the Edgeworth correction. Everything the algorithms optimize is therefore an $O(J/N)$ perturbation of $\ell_{J}$, and the two theorems below are transfer theorems.
+
+\begin{theorem}
+Assume (D1)--(D4). Then $\hat{\bm{\theta}}_{\text{LA}}\xrightarrow{p}\bm{\theta}^{*}$ and $\hat{\bm{\theta}}_{G}\xrightarrow{p}\bm{\theta}^{*}$ as $J\to\infty$.
+\label{thm:computable-consistency}
+\end{theorem}
+
+The argument transports the uniform concentration of (D3)(i) to both computable criteria through Proposition~\ref{prop:criteria-gap} and then applies the well-separation step, exactly as in Propositions~1 and~2 of \citet{Yue2026}; their envelope construction is not needed here, because uniform concentration of the exact likelihood is already available.
+
+\begin{theorem}
+Assume (D1)--(D5) and $\sqrt{J}/N\to0$. Then, for $A\in\{\text{LA},G\}$,
+\begin{equation}
+    \sqrt{J}\big(\hat{\bm{\theta}}_{A}-\bm{\theta}^{*}\big)\xrightarrow{d}\mathcal{N}\big(\bm{0},\bar{\mathbf{I}}(\bm{\theta}^{*})^{-1}\big),\qquad\sqrt{J}\big(\hat{\bm{\theta}}_{G}-\hat{\bm{\theta}}_{\text{LA}}\big)\xrightarrow{p}\bm{0}.
+    \label{eq:computable-an}
+\end{equation}
+\label{thm:computable-an}
+\end{theorem}
+
+Both estimators attain the same first-order limit as the exact maximum likelihood estimator, with the exact-likelihood information in the variance. The rate condition weighs the two error sources against each other. The stochastic error is $O_{p}(J^{-1/2})$ and the approximation bias is $O(N^{-1})$, so $\sqrt{J}/N\to0$ is exactly the regime in which the bias is negligible at the CLT scale; this is the classical condition of \citet{Vonesh1996} for Laplace-based estimation. The second display says that certifying monotonicity through $G$ costs nothing asymptotically. The certificate objective sits above $\ell_{\text{LA}}$ by $O(J/N)$, its score gap is $O(J/N)$ after the exact cancellation of Lemma~\ref{lem:G-score-cancel}, and the two estimators are interchangeable to first order.
+
+Two comparisons with \citet{Yue2026} locate the contribution. First, their consistency theorem holds at fixed cluster sizes because their condition (A4) assumes that the population Laplace criterion is maximized at the true parameter, which absorbs the entire approximation bias into an assumption. Our Proposition~\ref{prop:criteria-gap} replaces that assumption by a proved $O(1/N)$ bound, and consistency to the truth then genuinely requires $N\to\infty$. This is the honest form of the statement for multinomial responses, where the Laplace error is nonzero at every sample size. Second, their asymptotic normality result is a sandwich-form CLT for the regression block around the maximizer of the population Laplace criterion. The fixed-$N$ analogue holds here as well: without the rate condition, $\hat{\bm{\theta}}_{A}$ is asymptotically normal around a pseudo-true value $\bm{\theta}^{*}_{A}$ with sandwich variance, and Lemma~\ref{lem:pseudo-true} bounds $\|\bm{\theta}^{*}_{A}-\bm{\theta}^{*}\|\leq C/N$ (Remark~\ref{rem:sandwich}). Their conditions (B3) and (B4) reappear here as (D4) and Lemma~\ref{lem:tensor-scale}, and their Lemma~1, which localizes the Laplace mode around the true random effect, is replaced by Lemma~\ref{lem:mode-localization}, which localizes the curvature-penalized mode around the Laplace mode; that is the additional step the $G$ criterion needs.
+
+Two remarks on scope. The leading term of $\log Z_{j}$ is an explicit contraction of third and fourth derivatives \citep{ShunMcCullagh1995}, and the corrected E-step of Section~\ref{subsec:corrected-lambda} targets exactly the mean-level part of this object; a formal bias-reduction theorem for the corrected estimator is left open. All constants in this subsection depend on the fixed dimension $Q$; the joint growth regime, in which $Q$ increases with $J$, is the subject of Section~\ref{sec:joint-growth} and is conjectured there to require $J\gg Q^{c}\log Q$.
+\fi
+\iffalse
 In this section, we adopt the processes established by \citet{Cui2026} and write the proof of analytic results based on the converged estimation $\hat{\bm{\theta}}_{n}:=\arg\max_{\bm{\theta}}\sum_{j}\ell_{\text{obs}}(\bm{\theta}, \bm{y}_{j})$, where $\ell_{\text{obs}}(\bm{\theta}, \bm{y}_{j}):=\log p(\bm{y}_{j}, \bm{\theta})$ denotes the marginal log-likelihood of group $j$.
 
 \subsection{Consistency}
@@ -574,6 +765,7 @@ In simple case with regularity conditions, the function $\theta \mapsto P^{\thet
     \end{equation*}
     Since $\{\bm{u}_{n}\}$ lies on the compact unit sphere, a subsequence converges to the unit vector $\bm{u}$ passing to the limit along that subsequence, thus $\bm{u}_{n}^{\top}\bar{I}(\bm{\theta}^{*})\bm{u}_{n}=0$. However, $\bar{I}(\bm{\theta}^{*})\succ 0$, which implies that $\bm{u}_{n}^{\top}\bar{I}(\bm{\theta}^{*})\bm{u}_{n}>0$ for any unit vector $\bm{u}$ and leads to a contradiction. Hence no such sequence exists. 
 \end{proof}
+\fi
 
 \iffalse
 \subsubsection{Uniform Convergence}
