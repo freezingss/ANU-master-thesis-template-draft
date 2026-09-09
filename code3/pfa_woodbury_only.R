@@ -1,8 +1,3 @@
-# pfa_woodbury without PME tricky
-# 修改：1. 把参数exact_Shat删掉 放弃PME 主攻woodbury+edgeworth优化
-# 2. 加入backtracking保证Heywood problem不出现
-# 3. 后续优化edgeworth的计算 简化Q^2和Q^3的计算步骤
-
 laplace_lambda_j_wbonly <- function(Y_j, X_j, M_j, mu, phi, B, sigma2,
                                     BtB, M_K, M_K_inv, log_det_MK,
                                     max_iter = 100, estep_gtol = 1e-3, bt_max = 30,
@@ -16,6 +11,7 @@ laplace_lambda_j_wbonly <- function(Y_j, X_j, M_j, mu, phi, B, sigma2,
     eta <- sweep(fixed, 2, a, "+")
     sum(Y_j * eta) - sum(M_j * row_logsumexp(eta)) - 0.5 * sum(a * Sinv(a))
   }
+  
   wb_solve_exact <- function(g, pi_mat, d) {
     W <- sqrt(M_j) * pi_mat
     dt <- d + 1 / sigma2
@@ -33,10 +29,12 @@ laplace_lambda_j_wbonly <- function(Y_j, X_j, M_j, mu, phi, B, sigma2,
     sol <- backsolve(L, forwardsolve(t(L), rhs))
     idtg + idt * as.numeric(U %*% sol)
   }
+  
   lambda <- rep(0, Q)
   lp_cur <- lp(lambda)
   g <- rep(Inf, Q)
   d <- rep(0, Q)
+  
   for (iter in 1:max_iter) {
     eta <- sweep(fixed, 2, lambda, "+")
     pi <- row_softmax(eta)
@@ -51,10 +49,14 @@ laplace_lambda_j_wbonly <- function(Y_j, X_j, M_j, mu, phi, B, sigma2,
       if (lp(lambda + step * dir) >= lp_cur + c1 * step * gd) { accepted <- TRUE; break }
       step <- step * 0.5
     }
-    if (!accepted) break
+    if (!accepted) {
+      warning(sprintf("laplace_lambda_j_wbonly: line search failed to find an accepted step at inner iter %d (grad_norm=%.4g); returning current unconverged lambda", iter, max(abs(g))))
+      break
+    }
     lambda  <- lambda + step * dir
     lp_cur <- lp(lambda)
   }
+  
   eta <- sweep(fixed, 2, lambda, "+")
   pi <- row_softmax(eta)
   Mpi <- sweep(pi, 1, M_j, "*")
@@ -102,6 +104,7 @@ estep_wbonly <- function(J, group, Y, X, M, mu, phi, B, sigma2,
       n_iter_vec[j] <- NA; grad_norm_vec[j] <- NA
       next
     }
+    
     res <- laplace_lambda_j_wbonly(Y[idx, , drop = FALSE], X[idx, , drop = FALSE],
                                    M[idx], mu, phi, B, sigma2,
                                    BtB = BtB, M_K = M_K, M_K_inv = M_K_inv,
@@ -114,22 +117,60 @@ estep_wbonly <- function(J, group, Y, X, M, mu, phi, B, sigma2,
     n_iter_vec[j] <- res$n_iter
     grad_norm_vec[j] <- res$grad_norm
   }
+  
   list(lambda_hat = lambda_hat, S_hat = S_hat, lp_total = lp_total,
        ld_S_total = ld_S_total, log_det_Sigma = ldSigma,
        n_iter_vec = n_iter_vec, grad_norm_vec = grad_norm_vec)
 }
 
-fit_pfa_wbonly_traced <- function(Y, X, group, K,
-                                  M = rowSums(Y),
-                                  max_iter = 60, tol = 1e-4,
-                                  lambda_phi = 0, sigma2_init = 0.3,
-                                  verbose = TRUE,
-                                  estep_max_iter = 100, estep_gtol = 1e-3,
-                                  B_true = NULL) {
-  N <- nrow(Y)
-  Q <- ncol(Y)
-  P <- ncol(X)
-  J <- max(group)
+mstep_phi_wbonly <- function(Y, X, group, lambda_hat, mu, phi, lambda_phi = 0) {
+  N <- nrow(Y); Q <- ncol(Y); P <- ncol(X)
+  A_obs <- t(lambda_hat[, group, drop = FALSE])
+  
+  eta <- sweep(X %*% phi, 2, mu, "+") + A_obs
+  M_i <- rowSums(Y)
+  delta <- log(pmax(M_i, 1)) - row_logsumexp(eta)
+  
+  mu_new <- mu
+  phi_new <- phi
+  
+  for (q in 1:Q) {
+    off <- delta + A_obs[, q]
+    co <- tryCatch({
+      if (lambda_phi <= 0) {
+        fit <- suppressWarnings(
+          glm.fit(x = X, y = Y[, q], family = poisson(), offset = off))
+        fit$coefficients
+      } else {
+        pois_ridge_irls(X, Y[, q], off, lambda_phi)
+      }
+    }, error = function(e) c(mu[q], phi[-1, q]))
+    if (any(!is.finite(co))) co <- c(mu[q], phi[-1, q])
+    mu_new[q] <- co[1]
+    if (P > 1) phi_new[2:P, q] <- co[2:P]
+  }
+  phi_new[1, ] <- 0
+  list(mu = mu_new, phi = phi_new)
+}
+
+# ppca_wbonly <- function(Sigma_obs, K) {
+#   Q <- nrow(Sigma_obs)
+#   e <- eigen((Sigma_obs + t(Sigma_obs)) / 2, symmetric = TRUE)
+#   lam <- pmax(e$values, 0)
+#   sigma2 <- if (K < Q) max(mean(lam[(K + 1):Q]), 1e-8) else 1e-8
+#   B <- e$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(lam[1:K] - sigma2, 0)), K)
+#   list(B = B, sigma2 = sigma2)
+# }
+
+fit_pfa_wbonly <- function(Y, X, group, K,
+                           M = rowSums(Y),
+                           max_iter = 60, tol = 1e-4,
+                           lambda_phi = 0, sigma2_init = 0.3,
+                           verbose = FALSE,
+                           estep_max_iter = 100, estep_gtol = 1e-3,
+                           trace = FALSE, B_true = NULL) {
+  
+  N <- nrow(Y); Q <- ncol(Y); P <- ncol(X); J <- max(group)
   stopifnot(all(X[, 1] == 1))
   
   avg_prop <- colMeans(Y / pmax(rowSums(Y), 1))
@@ -150,15 +191,22 @@ fit_pfa_wbonly_traced <- function(Y, X, group, K,
   B <- apply_PLT(B)
   sigma2 <- sigma2_init
   
-  # Initialization
   log_ev <- numeric(max_iter)
-  sigma2_trace <- numeric(max_iter)
-  B_dist_trace <- if (!is.null(B_true)) numeric(max_iter) else NULL
+  if (trace) {
+    sigma2_trace <- numeric(max_iter)
+    monotone_trace <- rep(NA, max_iter)
+    B_dist_trace <- if (!is.null(B_true)) numeric(max_iter) else NULL
+    best_iter <- NA_integer_
+    best_log_ev <- -Inf
+    best_state <- NULL
+  }
+  
   converged <- FALSE
+  stop_reason <- "max_iter"
   em <- 0
-  es <- NULL
   
   for (em in 1:max_iter) {
+    
     es <- estep_wbonly(J, group, Y, X, M, mu, phi, B, sigma2,
                        max_iter = estep_max_iter, estep_gtol = estep_gtol)
     lambda_hat <- es$lambda_hat
@@ -166,93 +214,67 @@ fit_pfa_wbonly_traced <- function(Y, X, group, K,
     
     log_ev[em] <- es$lp_total - 0.5 * J * es$log_det_Sigma + 0.5 * es$ld_S_total
     
-    mp <- mstep_phi_wb(Y, X, group, lambda_hat, mu, phi, lambda_phi = lambda_phi)
-    mu <- mp$mu; phi <- mp$phi
+    if (trace) monotone_trace[em] <- if (em == 1) TRUE else (log_ev[em] >= log_ev[em - 1])
+    
+    mp <- mstep_phi_wbonly(Y, X, group, lambda_hat, mu, phi, lambda_phi = lambda_phi)
+    mu <- mp$mu
+    phi <- mp$phi
     
     S_obs <- tcrossprod(lambda_hat) / J
     for (j in 1:J) S_obs <- S_obs + S_hat[[j]] / J
-    rt <- rubin_thayer_wb(S_obs, K, B_init = B, sigma2_init = sigma2)
+    rt <- ppca_closed(S_obs, K)
     B <- apply_PLT(rt$B)
     sigma2 <- rt$sigma2
     
-    sigma2_trace[em] <- sigma2
-    if (!is.null(B_true)) B_dist_trace[em] <- subspace_dist(B, B_true)
-    
-    if (verbose) {
-      bd_str <- if (!is.null(B_true)) sprintf("  B_dist = %.4f", B_dist_trace[em]) else ""
-      cat(sprintf("iter %3d  log_ev = %.4f  sigma2 = %.4f%s\n", em, log_ev[em], sigma2, bd_str))
+    if (trace) {
+      sigma2_trace[em] <- sigma2
+      if (!is.null(B_true)) B_dist_trace[em] <- subspace_distance(B, B_true)
+      if (log_ev[em] > best_log_ev) {
+        best_log_ev <- log_ev[em]
+        best_iter <- em
+        best_state <- list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
+                           lambda_hat = lambda_hat, S_hat = S_hat)
+      }
     }
     
-    # absolute value criterion
-    if (em > 1 && abs(log_ev[em] - log_ev[em - 1]) < tol) { converged <- TRUE; break }
+    if (verbose) {
+      bd_str <- if (trace && !is.null(B_true)) sprintf("  B_dist = %.4f", B_dist_trace[em]) else ""
+      cat(sprintf("iter %3d  log_ev = %.4f  sigma2 = %.4f%s\n",
+                  em, log_ev[em], sigma2, bd_str))
+    }
+    
+    if (em > 1 && abs(log_ev[em] - log_ev[em - 1]) < tol) { converged <- TRUE; stop_reason <- "tol"; break }
   }
   
-  list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
-       lambda_hat = lambda_hat, S_hat = S_hat,
-       log_evidence = log_ev[1:em], converged = converged, iterations = em,
-       sigma2_trace = sigma2_trace[1:em],
-       B_dist_trace = if (!is.null(B_true)) B_dist_trace[1:em] else NULL,
-       inner_iter_mean_final = mean(es$n_iter_vec, na.rm = TRUE),
-       grad_norm_mean_final = mean(es$grad_norm_vec, na.rm = TRUE),
-       inner_maxiter_hit_pct_final = mean(es$n_iter_vec >= estep_max_iter, na.rm = TRUE))
-}
-
-mstep_phi_wbonly <- function(Y, X, group, lambda_hat, mu, phi, lambda_phi = 0) {
-  N <- nrow(Y); Q <- ncol(Y); P <- ncol(X)
-  A_obs <- t(lambda_hat[, group, drop = FALSE])
+  es_final <- estep_wbonly(J, group, Y, X, M, mu, phi, B, sigma2,
+                           max_iter = estep_max_iter, estep_gtol = estep_gtol)
+  lambda_hat <- es_final$lambda_hat
+  S_hat <- es_final$S_hat
+  log_ev_final <- es_final$lp_total - 0.5 * J * es_final$log_det_Sigma + 0.5 * es_final$ld_S_total
   
-  eta <- sweep(X %*% phi, 2, mu, "+") + A_obs
-  M_i <- rowSums(Y)
-  delta <- log(pmax(M_i, 1)) - row_logsumexp(eta)
+  out <- list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
+              lambda_hat = lambda_hat, S_hat = S_hat,
+              log_evidence = log_ev[1:em], log_ev_final = log_ev_final,
+              converged = converged, iterations = em, stop_reason = stop_reason,
+              inner_iter_mean_final = mean(es_final$n_iter_vec, na.rm = TRUE),
+              grad_norm_mean_final = mean(es_final$grad_norm_vec, na.rm = TRUE),
+              inner_maxiter_hit_pct_final = mean(es_final$n_iter_vec >= estep_max_iter, na.rm = TRUE))
   
-  mu_new <- mu
-  phi_new <- phi
-  
-  for (q in 1:Q) {
-    off <- delta + A_obs[, q]
-    co <- tryCatch({
-      fit <- suppressWarnings(
-        glm.fit(x = X, y = Y[, q], family = poisson(), offset = off))
-      fit$coefficients
-    }, error = function(e) c(mu[q], phi[-1, q]))
-    if (any(!is.finite(co))) co <- c(mu[q], phi[-1, q])
-    mu_new[q] <- co[1]
-    if (P > 1) phi_new[2:P, q] <- co[2:P]
+  if (trace) {
+    em_final <- em
+    is_monotone <- all(monotone_trace[1:em_final])
+    first_decrease_iter <- if (!is_monotone) which(!monotone_trace[1:em_final])[1] else NA_integer_
+    out <- c(out, list(
+      sigma2_trace = sigma2_trace[1:em_final],
+      monotone_trace = monotone_trace[1:em_final],
+      is_monotone = is_monotone,
+      first_decrease_iter = first_decrease_iter,
+      B_dist_trace = if (!is.null(B_true)) B_dist_trace[1:em_final] else NULL,
+      best_iter = best_iter,
+      best_log_ev = best_log_ev,
+      best = best_state
+    ))
   }
-  phi_new[1, ] <- 0
-  list(mu = mu_new, phi = phi_new)
-}
-
-rubin_thayer_wbonly <- function(Sigma_obs, K, B_init = NULL, sigma2_init = 0.3,
-                            max_iter = 500, tol = 1e-10) {
-  Q <- nrow(Sigma_obs)
-  trS <- sum(diag(Sigma_obs))
   
-  if (is.null(B_init)) {
-    sv <- svd(Sigma_obs, nu = K, nv = K)
-    lam <- pmax(sv$d[1:K] - sigma2_init, 0.05)
-    B <- sv$u %*% diag(sqrt(lam), K)
-  } else B <- B_init
-  sigma2 <- max(sigma2_init, 1e-6)
-  
-  for (iter in 1:max_iter) {
-    B_old <- B; s_old <- sigma2
-    BtB_ <- crossprod(B)
-    M_K_ <- diag(K) + BtB_ / sigma2
-    Mki <- solve(M_K_)
-    
-    SoB <- Sigma_obs %*% B
-    BtSB <- crossprod(B, SoB)
-    
-    Theta  <- Mki + Mki %*% BtSB %*% Mki / sigma2^2
-    B_new  <- SoB %*% (Mki %*% solve(Theta)) / sigma2
-    
-    BtSBn <- crossprod(SoB, B_new)
-    trace_term <- sum(Mki * t(BtSBn)) / sigma2
-    sigma2_new <- max((trS - trace_term) / Q, 1e-6)
-    
-    B <- B_new; sigma2 <- sigma2_new
-    if (max(abs(B - B_old)) < tol && abs(sigma2 - s_old) < tol) break
-  }
-  list(B = B, sigma2 = sigma2)
+  out
 }
