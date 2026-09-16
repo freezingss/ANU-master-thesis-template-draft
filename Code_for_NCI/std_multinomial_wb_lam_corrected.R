@@ -1,0 +1,174 @@
+source("pfa_woodbury_only.R")
+
+fit_pfa_woodbury_lam_corr <- function(Y, X, group, K,
+                                      M = rowSums(Y),
+                                      max_iter = 60, tol = 1e-4,
+                                      lambda_phi = 0, sigma2_init = 0.3,
+                                      verbose = FALSE,
+                                      estep_max_iter = 100, estep_gtol = 1e-3,
+                                      B_true = NULL,
+                                      use_lambda_correction = FALSE,
+                                      corr_max_rel = 0.5,
+                                      fix_sigma2 = NULL,
+                                      trace = TRUE) {
+
+  N <- nrow(Y)
+  Q <- ncol(Y)
+  P <- ncol(X)
+  J <- max(group)
+  stopifnot(all(X[, 1] == 1))
+  stopifnot(is.null(fix_sigma2) || is.numeric(fix_sigma2))
+
+  avg_prop <- colMeans(Y / pmax(rowSums(Y), 1))
+  mu <- log(avg_prop + 1e-8)
+  mu <- mu - mean(mu)
+  phi <- matrix(0, P, Q)
+
+  gm <- matrix(0, J, Q)
+  for (j in 1:J) {
+    idx <- which(group == j)
+    if (length(idx) > 0) {
+      gs <- colSums(Y[idx, , drop = FALSE])
+      gm[j, ] <- log((gs + 1e-5) / (sum(gs) + Q * 1e-5))
+    }
+  }
+  gm_c <- sweep(gm, 2, colMeans(gm))
+  sv0 <- svd(t(gm_c), nu = K, nv = K)
+  B <- sv0$u %*% diag(pmax(sv0$d[1:K] * 0.5, 0.1), K)
+  B <- apply_PLT(B)
+
+  sigma2 <- sigma2_init
+
+  log_ev <- numeric(max_iter)
+  sigma2_trace <- numeric(max_iter)
+  monotone_trace <- rep(NA, max_iter)
+  B_dist_trace <- if (!is.null(B_true)) numeric(max_iter) else NULL
+  u_frac_trace <- numeric(max_iter)
+  corr_rel_size_trace <- numeric(max_iter)
+  corr_n_capped_trace <- integer(max_iter)
+  Shat_share_trace <- numeric(max_iter)
+  converged <- FALSE
+  stop_reason <- "max_iter"
+  em <- 0
+
+  if (trace) {
+    best_iter <- NA_integer_
+    best_log_ev <- -Inf
+    best_state <- NULL
+  }
+
+  sigma2_is_frozen <- FALSE
+  sigma2_freeze_iter <- NA_integer_
+  sigma2_freeze_value <- NA_real_
+  if (is.numeric(fix_sigma2)) {
+    sigma2 <- fix_sigma2
+    sigma2_is_frozen <- TRUE
+    sigma2_freeze_iter <- 0L
+    sigma2_freeze_value <- fix_sigma2
+    if (verbose) message(sprintf("sigma2 frozen from iter 0 at %.4f", fix_sigma2))
+  }
+
+  for (em in 1:max_iter) {
+
+    es <- estep_wbonly(J, group, Y, X, M, mu, phi, B, sigma2,
+                       estep_max_iter, estep_gtol)
+    lambda_hat <- es$lambda_hat
+    S_hat <- es$S_hat
+
+    log_ev[em] <- es$lp_total - 0.5 * J * es$log_det_Sigma + 0.5 * es$ld_S_total
+
+    monotone_trace[em] <- if (em == 1) TRUE else (log_ev[em] >= log_ev[em - 1])
+
+    if (use_lambda_correction) {
+      ac <- apply_lambda_correction(Q, J, lambda_hat, S_hat, Y, X, group, M, mu, phi, corr_max_rel)
+      lambda_hat <- ac$lambda_corrected
+      corr_rel_size_trace[em] <- mean(pmin(ac$rel_size, corr_max_rel), na.rm = TRUE)
+      corr_n_capped_trace[em] <- ac$n_capped
+    } else {
+      corr_rel_size_trace[em] <- 0
+      corr_n_capped_trace[em] <- 0L
+    }
+
+    if (trace && log_ev[em] > best_log_ev) {
+      best_log_ev <- log_ev[em]
+      best_iter <- em
+      best_state <- list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
+                         lambda_hat = lambda_hat, S_hat = S_hat)
+    }
+
+    mp <- mstep_phi_wbonly(Y, X, group, lambda_hat, mu, phi, lambda_phi = lambda_phi)
+    mu <- mp$mu
+    phi <- mp$phi
+
+    S_lam <- tcrossprod(lambda_hat) / J
+    S_S <- matrix(0, Q, Q)
+    for (j in 1:J) S_S <- S_S + S_hat[[j]] / J
+    S_obs <- S_lam + S_S
+    Shat_share_trace[em] <- sum(diag(S_S)) / sum(diag(S_obs))
+
+    if (sigma2_is_frozen) {
+      Ssym <- (S_obs + t(S_obs)) / 2
+      eS <- eigen(Ssym, symmetric = TRUE)
+      lamK <- eS$values[1:K]
+      Uk <- eS$vectors[, 1:K, drop = FALSE]
+      if (any(lamK < sigma2) && verbose)
+        message(sprintf("iter %d: %d factor eigenvalue(s) below frozen sigma2 - clipped", em, sum(lamK < sigma2)))
+      B <- apply_PLT(Uk %*% diag(sqrt(pmax(lamK - sigma2, 0)), K))
+    } else {
+      rt <- ppca_closed(S_obs, K)
+      B <- apply_PLT(rt$B)
+      sigma2 <- rt$sigma2
+    }
+
+    sigma2_trace[em] <- sigma2
+    if (!is.null(B_true)) B_dist_trace[em] <- subspace_distance(B, B_true)
+    u_frac_trace[em] <- u_frac(B)
+    
+    if (verbose) {
+      bd <- if (!is.null(B_true)) sprintf("  B_dist=%.4f", B_dist_trace[em]) else ""
+      cs <- if (use_lambda_correction) sprintf("  corr_sz=%.4f capped=%d", corr_rel_size_trace[em], corr_n_capped_trace[em]) else ""
+      fz <- if (sigma2_is_frozen) sprintf("  [FROZEN@%.4f]", sigma2_freeze_value) else ""
+      cat(sprintf("iter %3d  log_ev=%.4f  sigma2=%.4f  Shat_share=%.3f  mono=%s%s%s%s\n",
+                  em, log_ev[em], sigma2, Shat_share_trace[em], monotone_trace[em], bd, cs, fz))
+    }
+
+    if (em > 1 && abs(log_ev[em] - log_ev[em - 1]) < tol) {
+      converged <- TRUE; stop_reason <- "tol"; break
+    }
+  }
+
+  es_final <- estep_wbonly(J, group, Y, X, M, mu, phi, B, sigma2, estep_max_iter, estep_gtol)
+  lambda_hat <- es_final$lambda_hat
+  S_hat <- es_final$S_hat
+  if (use_lambda_correction) {
+    ac_final <- apply_lambda_correction(Q, J, lambda_hat, S_hat, Y, X, group, M, mu, phi, corr_max_rel)
+    lambda_hat <- ac_final$lambda_corrected
+  }
+  log_ev_final <- es_final$lp_total - 0.5 * J * es_final$log_det_Sigma + 0.5 * es_final$ld_S_total
+
+  em_final <- em
+  is_monotone <- all(monotone_trace[1:em_final])
+  first_decrease_iter <- if (!is_monotone) which(!monotone_trace[1:em_final])[1] else NA_integer_
+
+  out <- list(mu = mu, phi = phi, B = B, sigma2 = sigma2,
+       lambda_hat = lambda_hat, S_hat = S_hat,
+       log_evidence = log_ev[1:em_final], log_ev_final = log_ev_final,
+       converged = converged, iterations = em_final,
+       stop_iter = em_final, stop_reason = stop_reason,
+       sigma2_trace = sigma2_trace[1:em_final],
+       monotone_trace = monotone_trace[1:em_final],
+       is_monotone = is_monotone,
+       first_decrease_iter = first_decrease_iter,
+       B_dist_trace = if (!is.null(B_true)) B_dist_trace[1:em_final] else NULL,
+       u_frac_trace = u_frac_trace[1:em_final],
+       corr_rel_size_trace = corr_rel_size_trace[1:em_final],
+       corr_n_capped_trace = corr_n_capped_trace[1:em_final],
+       Shat_share_trace = Shat_share_trace[1:em_final],
+       sigma2_freeze_iter = sigma2_freeze_iter,
+       sigma2_freeze_value = sigma2_freeze_value)
+
+  if (trace) {
+    out <- c(out, list(best_iter = best_iter, best_log_ev = best_log_ev, best = best_state))
+  }
+  out
+}

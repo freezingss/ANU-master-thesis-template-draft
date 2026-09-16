@@ -1,22 +1,4 @@
-# Change the name of several function, make sure their effect is the same as before, and the cited name is correct  
-# Notice: our own the version of R is R/4.5.1, does not match the required version of NCI (whose newest R version is R/4.5.0)
-
-# # For VSC R language server
-# install.packages("languageserver")
-# install.packages("jsonlite")
-# Used Packages
-# install.packages("glmmTMB")
-library(glmmTMB)
-# install.packages("bench")
-library(bench) # timing
-# install.packages("nnet")
-library(nnet)
-# install.packages("Matrix") # Cholesky decomposition
-library(Matrix)
-# install.packages("RSpectra") # eigen decomposition
-library(RSpectra)
-# install.packages("ggplot2")
-library(ggplot2)
+source("setup.R")
 
 # Long Table
 
@@ -36,15 +18,6 @@ build_long <- function(Y, X, group) {
   }
   long
 }
-
-# apply_PLT <- function(B) {
-#   K <- ncol(B)
-#   qr_obj <- qr(t(B[1:K, , drop = FALSE]))
-#   B_rot <- B %*% qr.Q(qr_obj)
-#   for (k in 1:K) if (B_rot[k, k] < 0) B_rot[, k] <- -B_rot[, k]
-#   for (k in 1:K) if (k > 1) B_rot[1:(k - 1), k] <- 0
-#   B_rot
-# }
 
 apply_PLT <- function(B) {
   # Add: remove the average
@@ -77,7 +50,9 @@ init_theta <- function(Y, X, group, K, sigma2_init) {
 
 lambda_mean_cor <- function(lambda_hat, lambda_true) {
   J <- ncol(lambda_true)
-  mean(sapply(1:J, function(j) cor(lambda_hat[, j], lambda_true[, j])))
+  mean(sapply(1:J, 
+              function(j) cor(lambda_hat[, j], 
+                              lambda_true[, j])))
 }
 
 all_perms <- function(K) {
