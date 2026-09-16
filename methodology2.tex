@@ -7,9 +7,13 @@ The observed-data likelihood under the model of Chapter~\ref{cha:model-specifica
     L(\bm{\theta})=\prod_{j=1}^{J}\prod_{i\in \mathcal{I}_{j}} p(\bm{y}_{ij}\mid \bm{\theta})=\prod_{j=1}^{J}\prod_{i\in \mathcal{I}_{j}} \int p(\bm{y}_{ij}\mid \bm{\lambda}_{j})p(\bm{\lambda}_{j}\mid \bm{\Sigma})\,d\bm{\lambda}_{j},
     \label{eq:log-lik-chap2}
 \end{equation}
-where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. This integral has no closed form in general because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM algorithm. The standard approach in generalized linear mixed models is the Laplace approximation (\citep{Breslow1993}, \citep{Tierney1986}), which replaced the integral with a Gaussian approximation at the posterior mode. To provide a more readable structure for the following sections, we introduce the basic notations and equalities for standard Laplace approximation.
+where the parameter space is $\bm{\theta}:=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$. This integral has no closed form in general because the Gaussian prior on $\bm{\lambda}_{j}$ is not conjugate to the multinomial likelihood, so we treat $\{\bm{\lambda}_{j}\}_{j=1}^{J}$ as missing data and then estimate $\bm{\theta}=\{\bm{\mu}, \bm{\Phi}, \mathbf{B},\sigma^{2}\}$ by EM algorithm. The standard approach in generalized linear mixed models is the Laplace approximation \citep{Breslow1993,Tierney1986}, which replaced the integral with a Gaussian approximation at the posterior mode.
+% FIX: combined the two separate \citep's into one \citep{Breslow1993,Tierney1986}; two adjacent \citep's print as two separate parenthesized citations "(Breslow1993) (Tierney1986)" rather than "(Breslow1993; Tierney1986)".
+To provide a more readable structure for the following sections, we introduce the basic notations and equalities for standard Laplace approximation.
 
-Taking the logarithm of likelihood~\ref{eq:log-lik-chap2} for each group $j$, we denote $h\left(\bm{\lambda}\right)$ as the logarithm of the integrand. The Laplace  method approximates the integral by forming a second-order Taylor expansion of $h\left(\bm{\lambda}\right)$ around its mode $\hat{\bm{\lambda}} = \arg\max_{\bm{\lambda}}\ell(\bm{\lambda})$. Let $\mathbf{H}$ be the negative Hessian matrix evaluated in the mode and $\mathbf{g}\left(\bm{\lambda}\right)$ be the gradient, then, 
+Taking the logarithm of likelihood~\eqref{eq:log-lik-chap2} for each group $j$, we denote $h\left(\bm{\lambda}\right)$ as the logarithm of the integrand. The Laplace  method approximates the integral by forming a second-order Taylor expansion of $h\left(\bm{\lambda}\right)$ around its mode $\hat{\bm{\lambda}} = \arg\max_{\bm{\lambda}}h(\bm{\lambda})$.
+% FIX: the argmax was written as "argmax ell(lambda)" but ell had not been defined yet -- h(lambda) was the name just introduced for this quantity. Changed to h(lambda) for consistency; if you did mean a distinct ell, please tell me how it relates to h and I will restate this properly. The rest of the chapter (Section~\ref{sec: EM-wb}) does use ell(lambda_j) for the specific group log-posterior, so if that is what you meant here, a forward pointer ("later specialized to ell(lambda_j) in Section...") would remove the ambiguity.
+Let $\mathbf{H}$ be the negative Hessian matrix evaluated in the mode and $\mathbf{g}\left(\bm{\lambda}\right)$ be the gradient, then, 
 \begin{equation}
     \mathbf{H}(\bm{\lambda}):=-\nabla^{2}h(\bm{\lambda})=\sum_{i\in\mathcal{I}_{j}}y_{i\cdot}\left(\text{diag}(\bm{p}_{i})-\bm{p}_{i}\bm{p}_{i}^{\top}\right)+\bm{\Sigma}^{-1},
     \label{eq: hessian-equality}
@@ -18,11 +22,15 @@ Taking the logarithm of likelihood~\ref{eq:log-lik-chap2} for each group $j$, we
     \mathbf{g}\left(\bm{\lambda}\right):=-\nabla h\left(\bm{\lambda}\right)=\sum_{i\in \mathcal{I}_{j}}\bigl(\bm{y}_{i}-y_{i\cdot}\bm{p}_{i}(\bm{\lambda})\bigr)-\bm{\Sigma}^{-1}\bm{\lambda}.
     \label{eq:gradient}
 \end{equation}
-For the simplicity, we provide three definitions in advance. Define
+For simplicity, we provide three definitions in advance.
+% FIX: "For the simplicity" -> "For simplicity".
+Define
 \begin{equation*}
-    d_{q}\left(\bm{\lambda}\right):=\sum_{i\in\mathcal{I}_{j}}y_{i\cdot}p_{iq}\left(\bm{\lambda}\right), \qquad \tilde{\mathbf{D}}\left(\bm{\lambda}\right):=\operatorname{diag}(\mathbf{d}\left(\bm{\lambda}\right)+\sigma^{-2}\mathbf{I}_{\text{Q}}),
+    d_{q}\left(\bm{\lambda}\right):=\sum_{i\in\mathcal{I}_{j}}y_{i\cdot}p_{iq}\left(\bm{\lambda}\right), \qquad \tilde{\mathbf{D}}\left(\bm{\lambda}\right):=\operatorname{diag}(\mathbf{d}\left(\bm{\lambda}\right))+\sigma^{-2}\mathbf{I}_{\text{Q}},
 \end{equation*}
-and the weight matrix $\mathbf{P}\left(\bm{\lambda}\right)\in \mathbb{R}^{Q\times I_{j}}$ with the $i$-th row $\sqrt{y_{i\cdot}}\bm{p}^{\top}_{i}\left(\bm{\lambda}\right)$, then the dense product can be rewritten as,
+% FIX: the bracket around diag(...) was wrong -- it read diag(d(lambda) + sigma^{-2} I_Q), which adds a Q-vector to a Q x Q matrix inside diag(), a dimension mismatch. Moved sigma^{-2}I_Q outside diag(), matching the equivalent definition of D-tilde given later in this section (diag(d) + sigma^{-2}I_Q).
+and the weight matrix $\mathbf{P}\left(\bm{\lambda}\right)\in \mathbb{R}^{I_{j}\times Q}$ with the $i$-th row $\sqrt{y_{i\cdot}}\bm{p}^{\top}_{i}\left(\bm{\lambda}\right)$, then the dense product can be rewritten as,
+% FIX: P(lambda) was stated as in R^{Q x I_j}; since its i-th row is sqrt(y_i.)p_i^T (a 1xQ row vector) and there are I_j such rows, P must be I_j x Q, not Q x I_j. This also matches how P (and P^T) are used later: U(lambda):=[P(lambda)^T, B] is stated to be in R^{Q x (I_j+K)}, which requires P^T to be Q x I_j, i.e. P itself I_j x Q; and the block structure of the capacitance matrix Delta below only works out correctly if P is I_j x Q.
 \begin{equation}
     \mathbf{P}^{\top}\mathbf{P}=\sum_{i\in\mathcal{I}_{j}}y_{i\cdot}\bm{p}_{i}\bm{p}_{i}^{\top},
     \label{eq:weight-prob}
@@ -91,59 +99,17 @@ Let
     \label{eq:capacitance}
 \end{equation}
 denote the capacitance matrix, of the smaller size $(I_{j}+K)\times (I_{j}+K)$ rather than the Hessian's $Q\times Q$, so that $\mathbf{H}^{-1}=\tilde{\mathbf{D}}^{-1}+\tilde{\mathbf{D}}^{-1}\mathbf{U}\Delta^{-1}\mathbf{U}^{\top}\tilde{\mathbf{D}}^{-1}$. For the inverse of $\mathbf H$ to exist and for its Cholesky factorization to be valid, $\Delta$ must be positive definite. This is not an extra condition to check. $\tilde{\mathbf D}\succ 0$ trivially, and the log-posterior is strictly concave at the mode, so $\mathbf H\succ 0$. The matrix determinant lemma applied to \eqref{eq:hessian-decomp-wb} then forces $\Delta\succ 0$ as well.
+% FLAG (not changed): a positive determinant alone does not imply positive definiteness -- an even number of negative eigenvalues also gives a positive determinant. The matrix determinant lemma by itself only shows det(Delta) has the same sign pattern implied by det(H), det(Dtilde), det(C); it does not rule out an even number of negative eigenvalues in Delta. Earlier in this conversation we worked through a proper proof of this positive-definiteness claim (your Theorem 4, via the Schur complement of a larger block matrix P = [[Dtilde, U],[U^T, C^{-1}]]), which is a genuinely different and more complete argument than "matrix determinant lemma forces Delta > 0". If that theorem is proved in full elsewhere in the thesis, I'd suggest citing it here instead of re-deriving a shortcut version that doesn't quite close the gap; if this paragraph is meant to BE the proof, it needs the Schur-complement step added.
 
 Putting the pieces together, computing $\mathbf{H}^{-1}$, or a solve $\mathbf{H}^{-1}\bm v$, never requires factorizing a $Q\times Q$ matrix. We only need $\tilde{\mathbf D}^{-1}$, which is diagonal, the $(I_j+K)\times(I_j+K)$ matrix $\Delta(\bm\lambda)$, and a Cholesky factorization of $\Delta$. Since $I_j$ and $K$ are both small and fixed while $Q$ grows, this gives the $\mathcal O\big(Q(I_j+K)^2+(I_j+K)^3\big)$ cost stated at the start of this section, in place of the dense $\mathcal O(Q^3)$ inversion.
-
-\section{Poisson-Multinomial Equivalence}
-\label{sec:PME}
-    
-The Poisson-Multinomial Equivalence established by \citet{Baker1994} states that the Multinomial likelihood conditional on $y_{ij\cdot}$ is exactly equivalent to a product of independent Poisson likelihoods sharing a common additive offset,
-
-\begin{equation}
-    \xi_{ij} = \log y_{ij\cdot} - \log\sum_{q=1}^Q \exp(\eta_{ijq}),
-    \label{eq:xi_baker}
-\end{equation}
-
-The joint Multinomial draw $\bm{y}_{ij} \mid \bm{\lambda}_{j} \sim \mathrm{Multinomial}(y_{ij\cdot}, \bm{p}_{ij})$ is equivalent to $y_{ijq} \mid \bm{\lambda}_{j} \sim \mathrm{Poisson}(\exp(\eta_{ijq} + \xi_{ij}))$ independently for $q = 1, \ldots, Q$, conditional on $y_{ij\cdot}$. We give the definition of $\eta_{ijq}$ and $\bm{p}_{ij}$. The offset~\eqref{eq:xi_baker} absorbs the softmax normalizer and decouples the $Q$ Poisson problems, thus we can solve these $Q$ Poisson independently. 
-
-\citet{Lee2017} extended the framework of \citet{Baker1994} by treating the aggregate count $y_{ij\cdot}$ as Poisson-distributed given the group effect $\bm{\lambda}_{j}$, rather than fixing it as the conditioning variable in the Multinomial likelihood. Marginalizing over this random aggregate recovers the same factorization into independent Poisson components across categories $q = 1, \dots, Q$. As a result, $\xi_{ij}$ becomes the rate parameter of this induced Poisson distribution instead of a fixed conditioning quantity.
-
-In our Multinomial dataset and EM algorithm, Q categories can be decomposed into Q paralleled GLM problems in M-step.
-
-\section{Edgeworth Correction for Group Effects}
-\label{subsec:corrected-lambda}
-
-The Laplace E-step needs the posterior mean of $\bm{\lambda}_j$ for each group $j$. But it only computes the posterior mode $\hat{\bm{\lambda}}_j$ and the curvature $\hat{\mathbf{S}}_j$ at that mode. Using the mode instead of the mean is exact when the posterior is Gaussian, since the two coincide. Our posterior is not Gaussian. The multinomial likelihood is skewed in $\bm{\lambda}$, so the mean sits away from the mode. The mode alone therefore feeds a shifted location into every M-step. \citet{katsevich2024} correct the same problem for general Bayesian posteriors, by adding a skew term to the Gaussian factor of the Laplace approximation. We adapt their idea to the multinomial case.
-
-For group $j$, write $\mathrm{lse}(\bm{\eta}_i) := \log\sum_{q=1}^Q \exp(\eta_{iq})$. Collect the third derivatives of the log-likelihood at the mode $\hat{\bm\lambda}_j$ in the tensor
-\begin{equation}
-    \mathbf{T}_{j,qrs} = \sum_{i \in I_j} y_{ij\cdot} \frac{\partial^3\,\mathrm{lse}(\bm{\eta}_i)}{\partial\eta_q\,\partial\eta_r\,\partial\eta_s}.
-    \label{eq:third-tensor}
-\end{equation}
-The prior is Gaussian, so this tensor captures all of the posterior's skewness. Following \citet{katsevich2024}, the leading-order correction to the mode is
-\begin{equation}
-    \bm{\mu}_{1,j} = -\tfrac{1}{2}\,\hat{\mathbf{S}}_j\big\langle \mathbf{T}_j, \hat{\mathbf{S}}_j \big\rangle, \qquad \big\langle \mathbf{T}_j, \mathbf{S}\big\rangle_q = \sum_{r,s} \mathbf{T}_{j,qrs}\,\mathbf{S}_{rs}.
-    \label{eq:edgeworth}
-\end{equation}
-We use $\hat{\bm\lambda}_j + \bm\mu_{1,j}$ in place of the raw mode wherever the E-step needs the posterior mean. The remaining error is two orders smaller in the usual Edgeworth bookkeeping, because the intermediate-order term vanishes by Gaussian parity.
-
-For the multinomial likelihood the contraction has a closed form. It avoids ever forming the $Q\times Q\times Q$ tensor:
-\begin{equation}
-    \big\langle \mathbf{T}_j, \mathbf{S}\big\rangle_q = \sum_{i \in I_j} y_{ij\cdot}\, p_{iq}\Big[\mathbf{S}_{qq} - 2(\mathbf{S}\bm{p}_i)_q - \bm{p}_i^\top\mathrm{diag}(\mathbf{S}) + 2\,\bm{p}_i^\top\mathbf{S}\bm{p}_i\Big],
-    \label{eq:T-contraction-multinomial}
-\end{equation}
-where $\bm p_i$ is observation $i$'s fitted probability vector at the mode. The cost per observation is one matrix-vector product $\mathbf{S}\bm p_i$, so the correction is cheap. We checked \eqref{eq:third-tensor} against finite differences, and \eqref{eq:T-contraction-multinomial} against a brute-force tensor contraction. Both agree to numerical precision.
-
-Intuitively, $\mathbf{T}$ measures how skewed the log-likelihood is at the mode. $\hat{\mathbf S}$ measures how much posterior spread there is to feel that skewness with. Equation~\eqref{eq:edgeworth} converts the two into a shift of the mode toward the heavier tail. The correction is largest for groups with small counts or very unbalanced $\bm p_i$, exactly where the multinomial posterior is most skewed.
-
-\iffalse
-In practice this correction is a modest fix, not a decisive one. In oracle single-round tests it recovers only part of the per-round bias in $\sigma^2$. Used on its own, it can also destabilize the EM iterations. Feeding $\hat{\bm\lambda}_j + \bm\mu_{1,j}$ directly into the M-step reintroduces the non-monotonicity problem from the previous section. The algorithm can then fail to reach the convergence tolerance, even though the underlying estimate has improved. Motivated by \citet{Yue2026}, we
-\fi 
 
 \section{Laplace-EM Algorithm via Woodbury}
 \label{sec: EM-wb}
 
-In this section, we construct a Laplace EM algorithm to estimate the parameters in the FA-DMR. The E-step relies on a Laplace approximation to compute the approximate models of the random effects. \citet{Rubin1982} established the Rubin-Thayer algorithm for the extraction of $\mathbf{B}$ and $\mathbf{D}$ from $\bm{\Sigma}$. Under our model assumption, the idiosyncratic matrix determined by $\sigma^{2}$ rather than a diagonal matrix with different entries. Thus, we introduce one classical result in probabilistic principle component analysis (PPCA) by \citet{Tipping1999}, who had shown that,
+In this section, we construct a Laplace EM algorithm to estimate the parameters in the FA-DMR. The E-step relies on a Laplace approximation to compute the approximate models of the random effects. \citet{Rubin1982} established the Rubin-Thayer algorithm for the extraction of $\mathbf{B}$ and $\mathbf{D}$ from $\bm{\Sigma}$. Under our model assumption, the idiosyncratic matrix is determined by $\sigma^{2}$ rather than a diagonal matrix with different entries.
+% FIX: "the idiosyncratic matrix determined by sigma^2" -> "...is determined by..." (missing verb).
+Thus, we introduce one classical result in probabilistic principal component analysis (PPCA) by \citet{Tipping1999}, who had shown that,
+% FIX: "principle component analysis" -> "principal component analysis".
 \begin{equation}
     \mathbf{B}=\mathbf{U}_{K}\left(\bm{\Lambda}_{K}-\sigma^{2}\mathbf{I}\right)^{1/2}\mathbf{R}.
     \label{eq:tipping-ppca_b}
@@ -154,8 +120,18 @@ For the estimated $\mathbf{B}$, $\sigma^{2}$ satisfies,
     \label{eq:tipping-ppca_sigma}
 \end{equation}
 where the $K$ column vectors in the $Q\times K$ matrix $\mathbf{U}_{K}$ are the principal eigenvectors of the sample covariance matrix of the group index, with corresponding eigenvalues $\lambda_{1},\cdots,\lambda_{K}$ in the $K\times K$ diagonal matrix $\bm{\Lambda}_{K}$, and $\mathbf{R}$ is an arbitrary $K\times K$ orthogonal rotation matrix.
-
-The M-step updates model parameters via Rubin-Thayer algorithm \citep{Rubin1982}. For the high dimensional data with large group number $J$ and category number $Q$, we introduce the Woodbury equality to reduce the calculation complexity, and increasingly reduce the runtime rather than multinomial itself. Since Woodbury is the exact surrogate for the matrices from Multinomial distribution, the estimation accuracy should be the same with Multinomial without optimization improvement, but reduce the runtime shortly. 
+% FLAG (not changed): "the sample covariance matrix of the group index" is unclear to me -- an index is not itself a random variable with a covariance. Do you mean the sample covariance of the group-level random effects (i.e. the matrix Sigma-hat-obs from Equation~\eqref{eq:sigma-obs}, or S from the FH-EM section)? Please confirm the exact object and I will name it precisely.
+In our model settings, the PPCA decomposition should be done in $(Q-1)$ dimensions, since the gauge constraint $\mathbf{1}^{\top}\mathbf{B}=\bm{0}$ gives one eigen-value to be exact 0. The transformed matrix $\bm{\Pi}$ for loading matrix $\mathbf{B}$ should be applied here for corresponding to the $(Q-1)\times (Q-1)$ dimensions as well. For the covariance matrix $\mathbf{S}$, the projection onto $\mathbf{1}^{\perp}$ is given by $\mathbf{S}_{\perp}:=\mathbf{V}^{\top}\mathbf{S}\mathbf{V}\in \mathbb{R}^{(Q-1)\times (Q-1)}$. Then we decompose the eigen-vector and find $Q-1$ eigen-values $\lambda_{1}\geq \lambda_{2}\geq \cdots\geq \lambda_{Q-1}$ and eigen-vector $\tilde{\mathbf{U}}\in \mathbb{R}^{(Q-1)\times (Q-1)}$. Let $\Lambda_{K}=\operatorname{diag}\left(\lambda_{1},\lambda_{2}, \cdots,\lambda_{K}\right)$, the new update formula for our $\sigma^{2}$ is given by,
+\begin{equation}
+    \hat{\sigma}^{2}=\frac{1}{Q-1-K}\sum_{n=K+1}^{Q-1}\lambda_{n},
+    \label{eq:tipping-ppca_sigma_deflate}
+\end{equation}
+and corresponding $\hat{\mathbf{B}}$ calculated by the product of classical decomposition from $Q-1$ space and transform projection $\mathbf{V}$,
+\begin{equation}
+    \hat{\mathbf{B}}=\mathbf{V}\tilde{\mathbf{U}}_{\mathrm{K}}\left(\bm{\Lambda}_{\mathrm{K}}-\hat{\sigma}^{2}\mathbf{I}_\mathrm{K}\right)^{1/2}\mathbf{R}.
+    \label{eq:tipping-ppca_b_deflate}
+\end{equation}
+The M-step updates model parameters via the Rubin-Thayer algorithm \citep{Rubin1982}. For the high dimensional data with large group number $J$ and category number $Q$, we introduce the Woodbury equality to reduce the calculation complexity and the runtime, without changing the estimate itself. Since Woodbury is an exact algebraic identity applied to the same multinomial-model quantities, the estimation accuracy is identical to the non-accelerated computation; only the runtime is reduced. Thus, we report results from the fast, Woodbury-accelerated algorithm, rather than the standard (non-accelerated) Laplace-EM algorithm, purely to reduce runtime.
 
 \paragraph*{E-step: Estimate the Random Effect via LA.}
 For each group $j$, the log-posterior of $\bm{\lambda}_{j}$ is given by:
@@ -168,188 +144,87 @@ up to an additive constant independent of $\bm{\lambda}_{j}$, where
     \eta_{ijq}(\bm{\lambda}_{j})=\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q}+\lambda_{jq},
     \label{eq: individualcovariate}
 \end{equation}
-is evaluated separately for each $i\in \mathcal{I}_{j}$, gives the individual-specific covariate structure.
-The gradient and Hessian of \eqref{eq: estep-loglik} are~\eqref{eq: hessian-equality} and \eqref{eq:gradient}. Since $\mathbf{P}_{ij}\succeq 0$ and $\bm{\Sigma}^{-1}\succ 0$, we have $\mathbf{H}(\bm{\lambda}_{j})\prec 0$ everywhere, so $\ell(\bm{\lambda}_{j})$ is strictly concave and has a unique maximizer,
+is evaluated separately for each $i\in \mathcal{I}_{j}$ to reflect the individual-specific covariate structure.
+% FIX: "...gives the individual-specific covariate structure" -> "...to reflect the individual-specific covariate structure" (the original did not connect grammatically to the previous clause).
+The gradient and Hessian of \eqref{eq: estep-loglik} are~\eqref{eq: hessian-equality} and \eqref{eq:gradient}. Since $\operatorname{diag}(\bm p_i)-\bm p_i\bm p_i^\top\succeq 0$ and $\bm{\Sigma}^{-1}\succ 0$, we have $\mathbf{H}(\bm{\lambda}_{j})\succ 0$ everywhere, so $-\nabla^2\ell(\bm\lambda_j) = \mathbf H(\bm\lambda_j) \succ 0$, i.e.\ $\ell(\bm{\lambda}_{j})$ is strictly concave, and has a unique maximizer,
+% FIX (part of the H-sign cluster -- see my note above): the original wrote "we have H(lambda_j) prec 0 everywhere, so ell is strictly concave". Given H is defined as the NEGATIVE Hessian, and is shown to be PD here (sum of a PSD term and a PD term), H should be H > 0, not H < 0; concavity of ell then follows because -nabla^2 ell = H > 0 means nabla^2 ell < 0. I also swapped the undefined symbol "P_ij" for the explicit expression diag(p_i)-p_i p_i^T it evidently refers to, since P was already used earlier in this chapter for a different object (the stacked I_j x Q weight matrix) -- reusing P for this per-observation term risks confusion between the two. Please check this whole passage against your code.
 \begin{equation}
      \hat{\bm{\lambda}}_{j}
      = \arg\max_{\bm{\lambda}\in \mathbb{R}^{Q}}
-     \ell_{j}(\bm{\lambda}_{j}),
+     \ell(\bm{\lambda}_{j}),
      \label{eq:maximizer}
 \end{equation}
-which can be found by Newton's method. Strict concavity guarantees convergence to $\hat{\bm{\lambda}}_{j}$ from any starting point. The Laplace approximation then replaces the intractable posterior with the Gaussian matched to the model and curvature at,
+% FIX: changed "ell_j(lambda_j)" to "ell(lambda_j)" to match the notation ell(lambda_j) used in Equation~\eqref{eq: estep-loglik} (no subscript j on ell there).
+which can be found by Newton's method.
+% FLAG (not changed): the next sentence, "Strict concavity guarantees convergence to lambda-hat_j from any starting point", is a strong claim -- plain Newton's method (without a globalization step) is not guaranteed to converge globally from strict concavity alone; it typically needs a line search or trust region, which is exactly what the Armijo backtracking mentioned a few sentences later provides. As currently ordered, the strong global-convergence claim appears before backtracking is introduced, and sits oddly next to the later admission that "we observed severe instability" that motivated adding backtracking in the first place. Consider moving this claim to after backtracking is introduced, or weakening it to a local-convergence statement with global convergence attributed to the backtracking step.
+Strict concavity guarantees convergence to $\hat{\bm{\lambda}}_{j}$ from any starting point. The Laplace approximation then replaces the intractable posterior with the Gaussian matched to the model and curvature at,
 \begin{equation}
     \bm{\lambda}_{j}^{(t+1)}=
     \bm{\lambda}_{j}^{(t)}
-    -s^{(t)}\mathbf{H}\bigl(\bm{\lambda}_{j}^{(t)}
+    +s^{(t)}\mathbf{H}\bigl(\bm{\lambda}_{j}^{(t)}
     \bigr)^{-1}\nabla_{\bm{\lambda}_{j}}
     \ell \bigl(\bm{\lambda}_{j}^{(t)}\bigr),
     \label{eq:newton-method}
 \end{equation}
+% FIX (part of the H-sign cluster): changed the minus sign to a plus sign. With H defined as the negative Hessian (H = -grad^2 ell), the Newton ascent step for maximizing ell is lambda + s*H^{-1}*grad(ell), not lambda - s*H^{-1}*grad(ell); as written with a minus sign this moves in a descent direction. Please check against your code -- if the code uses a minus sign, either the code has the same bug, or H is defined with the opposite sign convention there and this write-up's H := -grad^2 h needs to change instead.
 The Laplace approximation then yields,
 \begin{equation}
-    p(\bm{\lambda}_{j}\mid \bm{y}_{ij}) \approx \mathcal{N}\bigl(\hat{\bm{\lambda}}_{j}, \hat{\mathbf{S}}_{j}\bigr), \quad \hat{\mathbf{S}}_{j}=\bigl(-\mathbf{H}(\hat{\bm{\lambda}_{j}})\bigr)^{-1}.
+    p(\bm{\lambda}_{j}\mid \bm{y}_{ij}) \approx \mathcal{N}\bigl(\hat{\bm{\lambda}}_{j}, \hat{\mathbf{S}}_{j}\bigr), \quad \hat{\mathbf{S}}_{j}=\mathbf{H}(\hat{\bm{\lambda}_{j}})^{-1}.
     \label{eq:surrogate-eq}
 \end{equation}
-In E-step, we also designed the improvement using Multinomial-Poisson Equivalence in the calculation of Hessian before, where the first term with complexity $\mathcal{O}\left(Q^{3}\right)$ in~\ref{eq: hessian-equality} was been removed. However, we observed severe instability on the value of log-likelihood, leading challenging issue of non-monotonicity and optimization. Meanwhile, the Heywood problem arises. We may encounter a severe Heywood problem, where the estimated error covariance matrix collapses during the iterations, with the final estimates degenerating toward zero. Therefore, we use Newton's method with Armijo backtracking search with step size $s^{(t)}\in (0,1]$ for the estimation of $\bm{\lambda}$. 
+% FIX (part of the H-sign cluster): removed the extra negation. H is already the negative Hessian (already positive definite at the mode), so the Laplace posterior covariance is H^{-1} directly; (-H)^{-1} would be negative definite, which cannot be a covariance matrix.
+In E-step, we also designed the improvement using Multinomial-Poisson Equivalence in the calculation of Hessian before, where the first term with complexity $\mathcal{O}\left(Q^{3}\right)$ in~\eqref{eq: hessian-equality} was removed.
+% FIX: "was been removed" -> "was removed".
+However, we observed severe instability on the value of log-likelihood, leading to a challenging issue of non-monotonicity in optimization.
+% FIX: "leading challenging issue of non-monotonicity and optimization" -> "leading to a challenging issue of non-monotonicity in optimization".
+Meanwhile, the Heywood problem arises. We may encounter a severe Heywood problem, where the estimated error covariance matrix collapses during the iterations, with the final estimates degenerating toward zero. Therefore, we use Newton's method with Armijo backtracking search with step size $s^{(t)}\in (0,1]$ for the estimation of $\bm{\lambda}$. 
 
 \paragraph*{M-step: Maximization and Estimation of Fixed Effects.}
 With $\hat{\bm{\lambda}}_{j}$ and $\hat{\mathbf{S}}_{j}$ estimated, we solve the maximization problem independently, 
 \begin{equation}
     (\hat{\mu}_{q}, \hat{\bm{\phi}}_{q})=\arg \max_{\mu_{q}, \bm{\phi}_{q}}\sum_{i}\bigl[y_{ijq}(\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q})-\exp (\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q}+\hat{\lambda}_{jq}+\xi_{ij})\bigr].
 \end{equation}
-This is a Poisson log-linear regression with offset $\lambda_{jq}+\xi_{ij}$, solved by iteratively reweighted least squares. The Q problems are independent and may be parallelized. The EM sufficient statistic for $\bm{\Sigma}$ follows directly from the Laplace output:
+This is a Poisson log-linear regression with offset $\lambda_{jq}+\xi_{ij}$, solved by iteratively reweighted least squares. The $Q$ problems are independent and may be parallelized. The EM sufficient statistic for $\bm{\Sigma}$ follows directly from the Laplace output:
 \begin{equation}
     \hat{\bm{\Sigma}}_{\text{obs}}=\frac{1}{J}\sum_{j}\mathbb{E}[\bm{\lambda}_{j} \bm{\lambda}_{j}^{\top}\mid \bm{y}_{ij}]\approx \frac{1}{J}\sum_{j}(\hat{\bm{\lambda}}_{j} \hat{\bm{\lambda}}_{j}^{\top}+\hat{\mathbf{S}}_{j}).
     \label{eq:sigma-obs}
 \end{equation}
 Critically, $\hat{\bm{\Sigma}}_{\text{obs}}$ is fully determined by current Laplace output $(\hat{\bm{\lambda}}_{j}, \hat{\mathbf{S}}_{j})$ and does not need to be re-evaluated during the Rubin-Thayer iterations, thus eliminating the circular dependency inherent in factor-space formulations.
-Given $\hat{\bm{\Sigma}}_{\text{obs}}$, we decompose $\bm{\Sigma}=\mathbf{BB}^{\top}+\sigma^2\mathbf{I}_{Q}$ via~\ref{eq:tipping-ppca_b}-\ref{eq:tipping-ppca_sigma} \citep{Tipping1999}. The PLT constraint is enforced post-hoc via a QR decomposition of the top K rows of $\hat{\mathbf{B}}_{\text{new}}$, followed by sign correction to ensure positive diagonal entries and zeroing of the upper triangle. Applying PLT only after the Rubin–Thayer sub-iterations converge, rather than at each inner step, avoids the discontinuities that would otherwise disrupt convergence.
+Given $\hat{\bm{\Sigma}}_{\text{obs}}$, we decompose $\bm{\Sigma}=\mathbf{BB}^{\top}+\sigma^2\mathbf{I}_{Q}$ via Equations~\eqref{eq:tipping-ppca_b}-\eqref{eq:tipping-ppca_sigma} \citep{Tipping1999}. The PLT constraint is enforced post-hoc via a QR decomposition of the top $K$ rows of $\hat{\mathbf{B}}_{\text{new}}$, followed by sign correction to ensure positive diagonal entries and zeroing of the upper triangle. Applying PLT only after the Rubin–Thayer sub-iterations converge, rather than at each inner step, avoids the discontinuities that would otherwise disrupt convergence.
 
 Given $\hat{\mathbf{B}}$ and $\hat{\sigma}^2$, the factor scores are recovered by the Bayes linear estimator \citep{Gelman2013}:
 \begin{equation}
 \hat{\mathbf{f}}_j = \left( \mathbf{I}_K + \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\mathbf{B}} \right)^{-1} \frac{1}{\hat{\sigma}^2} \hat{\mathbf{B}}^\top \hat{\boldsymbol{\lambda}}_j ,
 \label{eq: Bayeslinearestimator}
 \end{equation}
-requiring only $K\times K$ inversion.
-
-% Chapter~\ref{cha:methodology} derived a correct and convergent Laplace-EM algorithm, but left its dominant per-iteration cost unaddressed. Each Newton step in E-step requires forming and solving the $Q\times Q$ system~\eqref{eq: hessian-equality} at cost $\mathcal{O}(I_{j}Q^{2}+Q^{3})$, in the meanwhile, each inner iteration of the M-step factor update~\eqref{eq: Rubin3}-\eqref{eq: Rubin4} requires forming $\bm{\Sigma}^{-1}$ densely at cost $\mathcal{O}(Q^{3})$. For large Q, these costs are not merely inconvenient but make the algorithm impractical. This chapter develops an exact acceleration method to remove this bottleneck by showing that the Poisson-Multinomial equivalence that already underlies the M-step can be redeployed via auxiliary-variable construction, which can remove the cross-category coupling from the E-step Hessian as well.  
-
-We give a runtime comparison table for a small-scale test with moderate $J$ and $Q$, however, the standard multinomial and \texttt{glmmTMB} packages cost more than expected compared with EM-algorithm via Woodbury formula, which are shown below,
-
-\begin{table}[ht]
-\centering
-\begin{tabular}{llccccc}
-\toprule
-Setting & Method & Time (s) & Speedup & $\hat\sigma^2$ & $d(\hat B, B_0)$ & Converged \\
-\midrule
-\multirow{4}{*}{$J=50,\ Q=50$}
- & std             & 55.58  & 1.00$\times$ & 0.2895 & 0.3266 & NO \\
- & Woodbury   & 24.56  & 2.26$\times$ & 0.2895 & 0.3266 & NO \\
- & Wb + Corr       & 25.47  & 2.18$\times$ & 0.2997 & 0.3260 & NO \\
- & glmmTMB    & 40.10  & 1.39$\times$ & 0.3874 & 0.2536 & yes \\
-\midrule
-\multirow{4}{*}{$J=50,\ Q=100$}
- & std             & 83.90  & 1.00$\times$ & 0.2739 & 0.6310 & NO \\
- & Woodbury   & 37.03  & 2.27$\times$ & 0.2739 & 0.6310 & NO \\
- & Wb + Corr       & 38.89  & 2.16$\times$ & 0.2877 & 0.6318 & NO \\
- & glmmTMB    & 130.29 & 0.64$\times$ & 0.4056 & 0.3145 & yes \\
-\midrule
-\multirow{4}{*}{$J=100,\ Q=50$}
- & std        & 114.44 & 1.00$\times$ & 0.2935 & 0.5317 & NO \\
- & Woodbury   & 48.77  & 2.35$\times$ & 0.2935 & 0.5317 & NO \\
- & Wb + Corr  & 50.27  & 2.28$\times$ & 0.3033 & 0.5308 & NO \\
- & glmmTMB    & 108.95 & 1.05$\times$ & 0.4201 & 0.4306 & yes \\
-\midrule
-\multirow{4}{*}{$J=100,\ Q=100$}
- & std        & 167.49 & 1.00$\times$ & 0.2768 & 0.2899 & NO \\
- & Woodbury   & 71.49  & 2.34$\times$ & 0.2768 & 0.2899 & NO \\
- & Wb + Corr  & 72.68  & 2.30$\times$ & 0.2914 & 0.2898 & NO \\
- & glmmTMB    & 412.37 & 0.41$\times$ & 0.3920 & 0.2193 & yes \\
-\bottomrule
-\end{tabular}
-\caption{Runtime and estimation accuracy across four $(J,Q)$ settings, seed=1, true $\sigma^2=0.30$. Speedup is relative to \texttt{std}. \texttt{std} and \texttt{Woodbury} agree exactly on $\hat\sigma^2$ and $d(\hat B, B_0)$ by construction (same algebra); the gap in runtime isolates the Woodbury acceleration itself.}
-\label{tab:speed-accuracy}
-\end{table}
-
-Table~\ref{tab:speed-accuracy} reports runtime and estimation accuracy across four $(J,Q)$ settings. This speedup is a pure acceleration effect. The Woodbury and dense estimators agree exactly on $\hat\sigma^2$ and $d(\hat B,B_0)$ in all four settings, since the two implementations solve the same optimization problem through different linear algebra.
-
-The dense, Woodbury, and corrected estimators did not converge within the fixed iteration budget in any of the four settings. This is expected, not a failure. The approximate E-step voids the classical EM monotonicity guarantee, so the log-evidence trajectory is not monotone. A fixed-budget run under a non-monotone objective need not satisfy a convergence tolerance, and does not indicate that the estimate is unreliable. \texttt{glmmTMB} converges in every setting, but its runtime advantage does not hold uniformly: it is faster than the dense baseline at $Q=50$ but substantially slower at $Q=100$. More importantly, glmmTMB attains a lower $d(\hat{\mathbf{B}}, \mathbf{B}_0)$ than our uncorrected estimator in all four settings. This gap in $B$-recovery, not runtime, is the primary shortcoming of the base algorithm and motivates the correction developed in the next section.
+requiring only $K\times K$ inversion.  
 
 \subsection{Limitations of the Standard EM-Algorithm \& Solutions}
 
-Although the runtime of Woodbury-EM algorithm reduces increasingly compared to standard EM algorithm and existing packages in R, i.e., \texttt{glmmTMB}, the accuracy is challenged, because our previous work all based on the acceleration rather than optimization. There are some facts that interesting when we did the small-scale tests, that the estimated error of loading matrix $\mathbf{B}$ is accumulated through iterations due to the nature of EM algorithm, resulting the final estimation of $\mathbf{B}$ in slightly less accuracy than $\texttt{glmmTMB}$ and $\texttt{gllvm}$. Meanwhile, the estimation of $\mathbf{B}$ affects $\sigma^{2}$ in this iteration, according to~\ref{eq:tipping-ppca_b}--\ref{eq:tipping-ppca_sigma}, we refer to this as coupling of two steps. 
+Although the runtime of the Woodbury-EM algorithm reduces substantially compared to the standard EM algorithm and existing R packages such as \texttt{glmmTMB}, its accuracy is a separate question, because our work so far has focused only on acceleration, not on optimization.
+% FIX: reworded "the accuracy is challenged, because our previous work all based on the acceleration rather than optimization" for grammar and clarity, keeping the same claim.
+Small-scale tests revealed an interesting pattern: the estimation error of the loading matrix $\mathbf{B}$ accumulates through iterations, a consequence of how the EM algorithm works, resulting in a final estimate of $\mathbf{B}$ that is slightly less accurate than \texttt{glmmTMB} and \texttt{gllvm}.
+% FIX: reworded "There are some facts that interesting when we did the small-scale tests, that... resulting the final estimation of B in slightly less accuracy than..." for grammar.
+Meanwhile, the estimation of $\mathbf{B}$ affects $\sigma^{2}$ in this iteration, according to Equations~\eqref{eq:tipping-ppca_b}--\eqref{eq:tipping-ppca_sigma}; we refer to this as the coupling of the two steps.
+% FIX: split the run-on sentence and changed \ref to \eqref.
 
 For more details, we come back to the prior in E-step $\bm{\Sigma}^{-1}=\left(\hat{\mathbf{B}}\hat{\mathbf{B}}^{\top}+\sigma^{2}\mathbf{I}\right)^{-1}$, which affected by $\hat{\mathbf{B}}^{(t)}$ itself in $t$-th iteration. In practice, this point leads to a self-confirming feedback loop. Along the directions that have already been identified as important by $\hat{\mathbf{B}}$, the prior variance is large and there is less shrinkage, while in the orthogonal directions, the prior variance is only $\sigma^{2}$ and there is more shrinkage. Therefore, $\hat{\bm{\lambda}}_{j}$ mainly spreads along the directions that have already been identified by $\hat{\mathbf{B}}$, and the M-step then uses these $\hat{\lambda}_j$ to estimate $\hat{\mathbf{B}}$ back to the same directions. The systematic localization experiments, including two comparison groups with $\bm{\mu},\bm{\phi}$ fixed and $\mathbf{B},\sigma^2$ varying, and with $\mathbf{B},\sigma^2$ fixed and $\bm{\mu},\bm{\phi}$ varying, precisely locate the source of the problem in this mechanism, rather than the estimation of $\bm{\mu},\bm{\phi}$ or the Rubin-Thayer method itself.
 
-In the following section, we arrange three methods of correction and compare the results of both accuracy, runtime and robustness.
+In the following section, we arrange three methods of correction and compare the results in terms of accuracy, runtime, and robustness.
+% FIX: "of both accuracy, runtime and robustness" -> "in terms of accuracy, runtime, and robustness" ("both" does not fit a list of three).
 
-% Add the result table
+\section{Fay-Herriot EM Algorithm (FH-EM): Maximum Likelihood Path}
+\label{sec:fay-herriot-em}
 
-\subsubsection{ISO: Isotropic Prior Setting for E-step}
-\label{subsubsec:isotropic-prior}
-
-For the self-confirming issue in the estimation of $\mathbf{B}$, we rewrite the prior in E-step using isotropic working prior $\mathcal{N}\left(\bm{0},\tau^{2}\mathbf{I}\right)$ instead of $\mathcal{N}\left(\mathbf{0},\bm{\Sigma}\right)$, where $\tau^{2}:=\operatorname{tr}\left(\hat{\mathbf{B}}\hat{\mathbf{B}}^{\top}\right)/Q+\hat{\sigma}^{2}$. Replacing $\bm{\Sigma}$ by $\tau^{2}\mathbf{I}$ in Newton step and define the surrogate $\hat{\mathbf{S}}_{j}=\left(\mathbf{F}_{j}+\tau^{-2}\mathbf{I}\right)^{-1}$ with Fisher information $\mathbf{F}_{j}=\sum_{i\in\mathcal{I}_{j}}y_{i\cdot}\left(\text{diag}(\bm{p}_{i})-\bm{p}_{i}\bm{p}_{i}^{\top}\right)$ for the $j$-th group. If we assume that $\mathbf{F}_{j}$ can be approximated as $I_{j}\mathbf{I}$, the posterior mode $\hat{\bm{\lambda}}_{j}$ degenerates to scalar shrinkage of the pure-data MLE $\tilde{\bm{\lambda}}_{j}$,
-\begin{equation}
-    \hat{\bm{\lambda}}_{j}=c\tilde{\bm{\lambda}}_{j}, \qquad c=\frac{I_{j}\tau^{2}}{I_{j}\tau^{2}+1}\in\left(0,1\right).
-    \label{eq:MLE-lam}
-\end{equation}
-Correspondingly, the second moment of M-step is,
-\begin{equation}
-    \hat{\bm{\Sigma}}^{\text{iso}}\approx c^{2}\bm{\Sigma}+\kappa\mathbf{I},
-    \label{eq:iso-M}
-\end{equation}
-where $\kappa=\frac{c(c+1)}{I_{j}}$. $c^{2}\bm{\Sigma} + \kappa \mathbf{I}$ has exactly the same eigenvectors as $\bm{\Sigma}$, so the subspace is preserved exactly. The cost is that the loadings are shrunk by a factor of $c$ overall, while $\hat{\bm{\sigma}}^2$ is systematically overestimated by $\kappa$. The Heywood problem depends exactly on the condition that the prior contains $\hat{\mathbf{B}}$. In Equation~\eqref{eq:iso-M}, the prior only contains $\tau^2$ and no longer contains $\hat{\mathbf{B}}$, so the first-level feedback loop is physically cut off at this step.
-
-\subsubsection{Debias: Moment-Matching Path}
-\label{subsubsec:debias}
-
-The cost of Equation~\ref{eq:iso-M} is not free. The overall shrinkage of the loading matrix by a factor of $c$ and the systematic overestimation of $\hat{\sigma}^2$ by $\kappa$ are both systematic biases that can be calculated exactly. Therefore, these biases should be corrected exactly without introducing another approximation.
-
-Fay-Herriot model~\citep{Herriot1979} introduced a moment-matching estimator, which we adapt for our group random effect $\bm{\lambda}$. They use the weighted average of observation and regression estimation as the final estimation. Instead of starting from true group random effect $\bm{\lambda}$, we begin at the pure-data MLE $\tilde{\bm{\lambda}}$ that is estimated directly from the dataset and assume that $\tilde{\bm{\lambda}}\mid\bm{\lambda}\sim\mathcal{N}\left(\bm{\lambda},\mathbf{F}^{-1}\right)$ for each group, where $\bm{\lambda}$ is known and $\mathbf{F}$ is the Fisher information matrix given by the asymptotic theory of MLE. Adapting the isotropic prior setting from Section~\ref{subsubsec:isotropic-prior}, the weighted average of $\hat{\bm{\lambda}}$ takes the form of the classical Bayes estimator in the case that the prior is known. We drop the group index $j$ when discussing a generic group, it is restored whenever a sum over groups appears. 
-
-\begin{equation}
-    \delta^{'}=\frac{A^{*}}{A^{*}+D}Y+\frac{D}{A^{*}+D}Y^{*},
-    \label{eq:classical-bayes1}
-\end{equation}
-where $Y$ denotes the direct estimator and $Y^{*}$ denotes the regression-synthetic estimator~\citep{Herriot1979, Pfeffermann2011}. Furthermore, $A^{*}$ and $D$ denote the variance respectively. Using our notation together with the group working prior $\bm{\lambda}\sim \mathcal{N}\left(\bm{0}, \tau^{2}\mathbf{I}\right)$, the expression can be written as,
-\begin{equation}
-    \hat{\bm{\lambda}}=\frac{\tau^{2}\mathbf{I}}{\tau^{2}\mathbf{I}+\mathbf{F}^{-1}}\tilde{\bm{\lambda}}+\frac{\mathbf{F}^{-1}}{\tau^{2}\mathbf{I}+\mathbf{F}^{-1}}\bm{0}=\frac{\tau^{2}\mathbf{I}}{\tau^{2}\mathbf{I}+\mathbf{F}^{-1}}\tilde{\bm{\lambda}}.
-    \label{eq:classical-bayes2}
-\end{equation}
-This is the standard form of the classical empirical Bayes shrinkage estimator. Given the sampling variance $\mathbf{F}^{-1}$ and the between-group working variance $\tau^{2}\mathbf{I}$, the shrinkage weight is determined by the proportion of data precision to the total precision from both the data and the prior. The standard expression of the BLUP in mixed models is another way to write the same formula [Citation].
-
-In the implementation, $\mathbf{F}$ for each group does not need to be calculated again. It can be directly obtained from $\hat{\mathbf{S}}=\left(\mathbf{F}+\tau^{-2}\mathbf{I}\right)^{-1}$ as $\mathbf{F}=\hat{\mathbf{S}}^{-1}-\tau^{-2}\mathbf{I}$. Equation~\ref{eq:classical-bayes2} can be reversed to obtain the pure-data MLE,
-\begin{equation}
-\tilde{\bm{\lambda}}=\mathbf{F}^{-1}\hat{\mathbf{S}}^{-1}\hat{\bm{\lambda}}.
-\label{eq:pure-data-lambda}
-\end{equation}
-Since $\bm{\lambda}$ and $\tilde{\bm{\lambda}}$ are two different points, let $\bm{\epsilon}:=\tilde{\bm{\lambda}}-\bm{\lambda}$ denote the sampling noise contained in the pure-data MLE with the variance according to the Cramer-Rao bound $\operatorname{Var}\left(\bm{\epsilon}\right)=\mathbf{F}^{-1}$. Therefore, the between-group covariance can be estimated by
-\begin{equation}
-\hat{\bm{\Sigma}}=\frac{1}{J}\sum_{j=1}^{J}\left(\tilde{\bm{\lambda}}_j\tilde{\bm{\lambda}}_j^{\top}-\mathbf{F}_j^{-1}\right).
-\label{eq:debias-Sigma}
-\end{equation}
-The estimation in iteration does not contain $\hat{\mathbf{B}}$. For each group, we subtract its own sampling variance $\mathbf{F}_j^{-1}$, which does not depend on other groups or on the current estimate of $\hat{\mathbf{B}}$. This gives a direct way to remove the measurement error variance and recover the variance of the underlying distribution.
-
-The scalar approximation in Equation~\eqref{eq:iso-M} is only used to explain the form of this step under an ideal setting. In the actual implementation, Equation~\eqref{eq:debias-Sigma} uses the group-specific $\mathbf{F}_j$ for each group, which can be anisotropic and does not depend on this approximation. For the multinomial model, $\mathbf{F}_j$ is exactly singular in the all-ones direction, since adding the same constant to all categories does not change the softmax probabilities. Therefore, a small ridge term with $\texttt{ridge}=10^{-3}$ is added to the inversion step in the calculation of $\hat{\mathbf{S}}$ in the implementation.
-
-\paragraph*{Phenomenon.} A problem was been found in both low-information settings ($Q=20,J=30,N_{\mathrm{per\ group}}=8$) and large-scale settings ($Q=200,J=160,N_{\mathrm{per\ group}}=15$). The debiased $\hat{\sigma}^{2}$ directly reaches the numerical lower bound $10^{-8}$ used in the closed-form implementation, regardless of the random seed. The two experiments are shown below,
-
-\begin{table}[H]
-\centering
-\begin{tabular}{lcccc}
-\toprule
-Setting ($\sigma^{2}_{\text{true}}=0.3$) & Method & $\hat\sigma^2$ & B distance & Tucker \\
-\midrule
-\multirow{4}{*}{$Q=20,\ K=2,\ J=30,\ I=8$}
- & std    & 0.2977 & 0.4631 & 0.9031 \\
- & iso    & 0.3867 & 0.2818 & 0.9739 \\
- & debias & $1\times10^{-8}$ & 0.2819 & 0.9749 \\
- % & FH-EM   & 0.3187 & 0.2753 & 0.9740 \\
-\midrule
-\multirow{4}{*}{$Q=200,\ K=2,\ J=160,\ I=15$}
- & std    & 0.3028 & 0.4073 & 0.8784 \\
- & iso    & 0.4461 & 0.1789 & 0.9874 \\
- & debias & $1\times 10^{-8}$ & 0.1701 & 0.9884 \\
- % & FH-EM   & 0.3304 & 0.1782 & 0.9872 \\
-\bottomrule
-\end{tabular}
-\caption{Comparison across estimation methods for two problem sizes.}
-\label{tab:method-comparison}
-\end{table}
-
-\paragraph*{Mechanism.} Equation~\ref{eq:debias-Sigma} subtracts a non-negligible quantity $\mathbf{F}_{j}^{-1}$ from a quantity $\tilde{\bm{\lambda}}_{j}\tilde{\bm{\lambda}}_{j}^{\top}$ that is not necessarily large. When the information from each group is insufficient, this subtraction can easily overshoot, resulting in negative eigenvalues in $\hat{\bm{\Sigma}}$. Once the closed-form PPCA sees that some of the smallest eigenvalues are negative, $\sigma^{2}$ estimation~\eqref{eq:tipping-ppca_sigma} is directly pushed to the numerical lower bound. This is a different mechanism from the first-level feedback loop. In both experiments, the $d_{\mathrm{true}}$ of the debias method is almost identical to that of the isotropic method. This means that the accuracy of the estimated subspace is not affected. The reason is that PPCA separates the estimation of the eigenvectors from the estimation of the smallest eigenvalues. A shift in the magnitude does not rotate the eigenvectors. This is exactly what we define above as the Heywood problem. The collapse occurs in the subtraction step of the moment de convolution itself and does not depend on whether $\hat{\mathbf{B}}$ is included in the prior. The standard method and earlier versions of the algorithm do not show this specific failure mode. It is a new problem introduced by the particular design choice of the debiasing correction.
-
-Honestly, whether this collapse occurs depends on the average count per category, which is approximately proportional to the magnitude of $\mathbf{F}_{j}$. It does not directly depend on $Q$, $J$, or $N{\mathrm{per\ group}}$ themselves. Although $Q$, $J$, and $I_{\mathrm{per\ group}}$ are all much larger in the second experiment than in the first one, the total count range in the simulation, $y_{\mathrm{tot}}\in[200,400]$, was not increased together with $Q$. Therefore, the average count per category was actually more sparse, and the same collapse was reproduced. This reminds us that, when determining whether this failure mode will occur, we should focus on the information per category rather than simply considering the overall data size.
-
-\subsubsection{Fay-Herriot EM Algorithm (FH-EM): Maximum Likelihood Path}
-
-\iffalse
 \paragraph*{Model Assumption.} The Fay-Herriot marginal likelihood in Equation~\eqref{eq:fh-marginal-likelihood} borrows its structure directly from the classical small-area model~\citep{Herriot1979, Pfeffermann2011}: a direct estimate observed with a known sampling covariance, linked through a common between-group Gaussian distribution. Transplanting this structure from survey-based small-area estimation to our setting requires several assumptions that do not hold exactly here, and we state them explicitly rather than leave them implicit in Equation~\eqref{eq:observation_model}.
+% FLAG (not changed): the bib key here is "Herriot1979" (second author only); the founding paper is Fay & Herriot (1979). If this is your standing convention for this key that's fine, just flagging in case it was meant to be FayHerriot1979 or similar.
 
 \begin{enumerate}
 \item[(A1)] \emph{$\mathbf F_j$ is treated as known, though it is not.} In the classical model, the sampling covariance $\psi_i$ is a design quantity, fixed and known prior to estimation. Here $\mathbf F_j$ is the multinomial Fisher information evaluated at $\hat{\bm\lambda}_j^{\text{iso}}$, the mode of an auxiliary isotropic-prior Laplace approximation (Section~\ref{subsubsec:isotropic-prior}), and is therefore itself an estimated quantity that depends on the current global parameters $(\hat{\mathbf{B}},\hat\sigma^2)$ through $\tau^2$. Equation~\eqref{eq:observation_model} treats $\mathbf F_j$ as fixed and non-stochastic within one EM round; this is the same plug-in approximation already flagged for the marginal likelihood in Equation~\eqref{eq:gaussian-mix}, and it propagates into the E-step and M-step derivations exactly the same way. It is not an additional error introduced by the EM reformulation; it is the same approximation, made explicit at the point where it is used rather than only at the point where its consequence (the Gaussian-mixture correction) is visible.
 
 \item[(A2)] \emph{Validity regime of the Gaussian approximation.} $\tilde{\bm\lambda}_j\mid\bm\lambda_j\sim\mathcal N(\bm 0,\mathbf F_j^{-1})$ relies on the asymptotic normality of the Laplace-approximated MLE. This is accurate when the per-category information within a group is large, and degrades as the average count per category shrinks, independent of $J$ or $Q$ themselves --- the same information-per-category condition identified in the debias failure analysis (Section~\ref{subsubsec:debias}). We do not assume this approximation is exact for any finite sample; we assume it is adequate in the regime our simulations and asymptotic theory (Chapter~\ref{cha:asymptotics}) target.
+
+% FLAG (not changed): (A3) is missing -- the list jumps from (A2) directly to (A4). Please check whether an assumption was deleted without renumbering the rest, or whether the numbering itself just needs to close the gap (A1-A6).
 
 \item[(A4)] \emph{Identifiability along the singular direction.} $\mathbf F_j$ is exactly singular along the all-ones direction, since a constant shift to all categories leaves the softmax probabilities unchanged. $\mathbf F_j+\bm\Sigma^{-1}$ is well-posed without an additional ridge because $\bm\Sigma^{-1}\succ0$ regularizes this direction on its own; however, $\tilde{\bm\lambda}_j$ itself is only defined up to whatever convention fixes this direction, and that convention is inherited from wherever $\bm\lambda_j$'s own identifiability constraint is imposed, not introduced fresh here.
 
@@ -370,16 +245,20 @@ The first stage of the debias method, which uses the Laplace approximation with 
 \end{equation} 
 Together with $\bm{\lambda}_{j}\sim \mathcal{N}\left(\bm{0},\bm{\Sigma}\right)$, we integrate on $\bm{\lambda}_{j}$ marginally. The density of $\tilde{\bm{\lambda}}_{j}$ is given by $p\left(\bm{\lambda}_{j},\tilde{\bm{\lambda}}_{j}\right)=p\left(\tilde{\bm{\lambda}}_{j}\mid \bm{\lambda}_{j}\right)p\left(\bm{\lambda}_{j}\right)$ and the marginal integral,
 \begin{equation}
-    p\left(\tilde{\bm{\lambda}}_{j}\right)=\int \mathcal{N}\left( \bm{\lambda}_{j};\,\bm{0},\mathbf{F}_{j}^{-1}\right)\mathcal{N}\left(\bm{\lambda}_{j};\,\bm{0},\bm{\Sigma}\right)\,d\bm{\lambda}_{j},
+    p\left(\tilde{\bm{\lambda}}_{j}\right)=\int \mathcal{N}\left( \tilde{\bm{\lambda}}_{j};\,\bm{\lambda}_j,\mathbf{F}_{j}^{-1}\right)\mathcal{N}\left(\bm{\lambda}_{j};\,\bm{0},\bm{\Sigma}\right)\,d\bm{\lambda}_{j},
     \label{eq:gaussian-mix}
 \end{equation}
-which is an approximation. Strictly speaking, $\mathbf{F}_j$ depends on the realized $\bm{\lambda}_j$ through the multinomial information matrix, so Equation~\eqref{eq:observation_model} is a conditional statement, in which $\mathbf{F}_{j}$ is the function of $\bm{\lambda}_{j}$. Thus, the integral~\eqref{eq:gaussian-mix} is an Gaussian scale mixture, rather than an exact Gaussian. We write it as an approximated formula,
+% FIX: the first factor was written N(lambda_j; 0, F_j^{-1}) -- an expression that does not even mention lambda-tilde_j on the right-hand side, so it could not be a valid derivation of p(lambda-tilde_j). Given Equation~\eqref{eq:observation_model} directly above (epsilon_j = lambda-tilde_j - lambda_j ~ N(0,F_j^{-1}), i.e. lambda-tilde_j | lambda_j ~ N(lambda_j, F_j^{-1})) and the correct final result in Equation~\eqref{eq:fh-marginal-likelihood} just below, the first factor here must be N(lambda-tilde_j; lambda_j, F_j^{-1}); changed accordingly.
+which is an approximation. Strictly speaking, $\mathbf{F}_j$ depends on the realized $\bm{\lambda}_j$ through the multinomial information matrix, so Equation~\eqref{eq:observation_model} is a conditional statement, in which $\mathbf{F}_{j}$ is a function of $\bm{\lambda}_{j}$.
+% FIX: "F_j is the function of lambda_j" -> "F_j is a function of lambda_j".
+Thus, the integral~\eqref{eq:gaussian-mix} is a Gaussian scale mixture, rather than an exact Gaussian.
+% FIX: "an Gaussian scale mixture" -> "a Gaussian scale mixture".
+We write it as an approximated formula,
 \begin{equation} 
     l_{\mathrm{FH}}(\bm{\Sigma}) \approx \sum_{j=1}^{J} \log \mathcal{N}\left(\tilde{\bm{\lambda}}_j;\, \mathbf{0}, \bm{\Sigma} + \mathbf{F}_j^{-1}\right). 
     \label{eq:fh-marginal-likelihood} 
 \end{equation}
 The right side is exactly the marginal likelihood of the multivariate Fay-Herriot model~\citep{Herriot1979, Pfeffermann2011}. $\tilde{\bm{\lambda}}_j$ is a direct estimate with known sampling covariance $\mathbf{F}_j^{-1}$, while $\bm{\Sigma}$ is the between-group covariance. When all $\mathbf{F}_j$ are equal, Equation~\eqref{eq:fh-marginal-likelihood} is exactly the MLE of $l_{\text{FH}}(\bm{\Sigma})$. When $\mathbf{F}_j$ are not equal, which naturally arises since the information from different groups can differ and our model allows different $I_j$, the debias estimator in Equation~\eqref{eq:debias-Sigma} remains consistent, and each term $\tilde{\bm{\lambda}}_j\tilde{\bm{\lambda}}_j^{\top}-\mathbf{F}_j^{-1}$ has expectation $\bm{\Sigma}$ regardless of $\mathbf{F}_j$, so the unweighted average converges to $\bm{\Sigma}$ as $J\to\infty$. It is not, however, fully efficient. Maximizing $l_{\text{FH}}(\bm{\Sigma})$ instead weights each group by its precision $(\bm{\Sigma}+\mathbf{F}_j^{-1})^{-1}$, so groups with higher information contribute more to the estimate of $\bm{\Sigma}$. Equal weighting, as used by debias, discards this information and results in a larger asymptotic variance.
-\fi
 
 \paragraph*{E-step.}
 \label{para:fhem-estep}
@@ -390,12 +269,15 @@ Equation~\eqref{eq:fh-marginal-likelihood} carries the approximation error discu
     &=-\frac{1}{2}\left[\left(\bm{\lambda}_{j} - \mathbf{V}_{j} \mathbf{F}_{j} \tilde{\bm{\lambda}}_{j}\right)^{\top} \mathbf{V}_{j}^{-1} \left(\bm{\lambda}_{j} - \mathbf{V}_{j} \mathbf{F}_{j} \tilde{\bm{\lambda}}_{j}\right) - \tilde{\bm{\lambda}}_{j}^{\top} \mathbf{F}_{j} \mathbf{V}_{j} \mathbf{F}_{j} \tilde{\bm{\lambda}}_{j}\right],
     \label{eq:joint-log-density}
 \end{align}
-up to a constant independent to $\bm{\lambda}_{j}$. Notice that $\bm{\lambda}_{j}$ only appears in the first term, the posterior therefore is given by $\mathbf{V}_{j}$ and the posterior mean $\mathbf{m}_{j} = \mathbf{V}_{j} \mathbf{F}_{j} \tilde{\bm{\lambda}}_{j}$,
+up to a constant independent of $\bm{\lambda}_{j}$.
+% FIX: "independent to" -> "independent of".
+Notice that $\bm{\lambda}_{j}$ only appears in the first term, the posterior therefore is given by $\mathbf{V}_{j}$ and the posterior mean $\mathbf{m}_{j} = \mathbf{V}_{j} \mathbf{F}_{j} \tilde{\bm{\lambda}}_{j}$,
 \begin{equation}
     \bm{\lambda}_{j}\mid \tilde{\bm{\lambda}}_{j}\sim \mathcal{N}\left(\mathbf{m}_{j},\mathbf{V}_{j}\right).
     \label{eq:fh-posterior}
 \end{equation}
-Interestingly, we extend the posterior mean $\mathbf{m}_{j} = \mathbf{V}_{j} \mathbf{F}_{j} \tilde{\bm{\lambda}}_{j}=\left(\mathbf{F}_{j}+\bm{\Sigma}^{-1}\right)^{-1}\mathbf{F}_{j}\tilde{\bm{\lambda}}_{j}$, which is  the similar formula as the shrinkage factor in Equation~\eqref{eq:classical-bayes2} and implies $\mathbf{m}_{j}$ to be the posterior mean of $\bm{\lambda}_{j}$ given $\bm{\Sigma}$.  
+Interestingly, we note that the posterior mean $\mathbf{m}_{j} = \mathbf{V}_{j} \mathbf{F}_{j} \tilde{\bm{\lambda}}_{j}=\left(\mathbf{F}_{j}+\bm{\Sigma}^{-1}\right)^{-1}\mathbf{F}_{j}\tilde{\bm{\lambda}}_{j}$ has the same form as the shrinkage factor in Equation~\eqref{eq:classical-bayes2}, confirming that $\mathbf{m}_{j}$ is the posterior mean of $\bm{\lambda}_{j}$ given $\bm{\Sigma}$.
+% FIX: "we extend the posterior mean..., which is the similar formula as... and implies m_j to be the posterior mean" -- reworded for grammar, same claim.
 
 We call back the structure of standard EM-algorithm and find the complete log-likelihood. Since $\bm{\Sigma}$ is not contained in $\tilde{\bm{\lambda}}_{j}\mid \bm{\lambda}_{j}$, we have,
 \begin{align}
@@ -415,15 +297,19 @@ Calculate the derivative of~\eqref{eq:fhem-Q-function} and obtain the solution,
 \begin{equation} \mathbf{S} = \frac{1}{J} \sum_{j=1}^{J} \left( \mathbf{m}_j \mathbf{m}_j^{\top} + \mathbf{V}_j \right). 
 \label{eq:fhem_mstep} 
 \end{equation}
-As the similar as standard Laplace-EM algorithm in Section~\ref{sec: EM-wb}, we apply the closed-form PPCA solution in Equations~\eqref{eq:tipping-ppca_b}-\eqref{eq:tipping-ppca_sigma} to $\mathbf{S}$ to decompose $\mathbf{B}$ and $\sigma^{2}$.
+As in the standard Laplace-EM algorithm in Section~\ref{sec: EM-wb}, we apply the closed-form PPCA solution in Equations~\eqref{eq:tipping-ppca_b}-\eqref{eq:tipping-ppca_sigma} to $\mathbf{S}$ to decompose $\mathbf{B}$ and $\sigma^{2}$.
+% FIX: "As the similar as standard Laplace-EM algorithm..." -> "As in the standard Laplace-EM algorithm...". Also note: this reuses Equations~\eqref{eq:tipping-ppca_b}-\eqref{eq:tipping-ppca_sigma}, so the Q-K vs Q-1-K flag above applies here too -- fixing that equation once fixes both places it's used.
 
-FH-EM algorithm can solve the Heywood problem that happens in debias method~\ref{subsubsec:debias} by establishing a strictly positive definite matrix $\mathbf{S}$. The collapse mechanism is thus structurally blocked rather than simply not appearing in a particular experiment. This is the specific reason why the ``Heywood'' problem is structurally corrected by the new method.
+FH-EM algorithm can solve the Heywood problem that happens in the debias method (Section~\ref{subsubsec:debias}) by establishing a strictly positive definite matrix $\mathbf{S}$. The collapse mechanism is thus structurally blocked rather than simply not appearing in a particular experiment. This is the specific reason why the ``Heywood'' problem is structurally corrected by the new method.
 
 We tested FH-EM algorithm on standard EM-algorithm setting without Woodbury formula usage. Since these optimized processes work well on standard EM algorithm, we can also use the Woodbury to reduce the calculation cost and complexity, which is introduced in the next section. 
 
 \paragraph*{Algorithm.}
 \label{para:fhem-algorithm}
-Algorithm~\ref{alg:fhem} summarizes the FH-EM procedure derived above. The inputs $\tilde{\bm{\lambda}}_j$ and $\mathbf{F}_j$ come from Stage~1 and remain fixed throughout. Each iteration alternates between the E-step in Equations~\eqref{eq:fh-posterior} and the M-step in Equation~\eqref{eq:fhem_mstep}, followed by a closed-form PPCA update. Both terms in the M-step are positive semi-definite by construction, so $\mathbf{S}$ is always positive definite and the collapse described in Level~2 of Table~\ref{tab:heywood-levels} cannot occur. Convergence is monitored through the marginal log-likelihood $l_{\text{FH}}(\bm{\Sigma})$ rather than the change in $\bm{\Sigma}$ itself, since the latter can declare convergence prematurely.
+Algorithm~\ref{alg:fhem} summarizes the FH-EM procedure derived above. The inputs $\tilde{\bm{\lambda}}_j$ and $\mathbf{F}_j$ come from Stage~1 and remain fixed throughout. Each iteration alternates between the E-step in Equations~\eqref{eq:fh-posterior} and the M-step in Equation~\eqref{eq:fhem_mstep}, followed by a closed-form PPCA update. Both terms in the M-step are positive semi-definite by construction, so $\mathbf{S}$ is always positive definite and the collapse described in Level~2 of Table~\ref{tab:heywood-levels} cannot occur.
+% NOTE (not a change, just a heads-up): the referenced Table~\ref{tab:heywood-levels} currently sits inside an \iffalse ... \fi block below, so it will not appear in the compiled PDF as the thesis stands. Flagging in case that was accidental.
+Convergence is monitored through the marginal log-likelihood $l_{\text{FH}}(\bm{\Sigma})$ rather than the change in $\bm{\Sigma}$ itself, since the latter can declare convergence prematurely.
+% FLAG (not changed): elsewhere in this thesis the decided convergence rule for the Woodbury EM was a JOINT absolute-tolerance check on both the log-evidence change and the sigma^2 change, specifically because your advisor wanted absolute (not relative) tolerance and because log-evidence alone was shown to be non-monotone in some of your earlier traces. This sentence recommends log-likelihood alone (explicitly rejecting monitoring Sigma's own change) for FH-EM. If FH-EM's log-likelihood genuinely is monotone (per (A5)/(A7) above, it should be, for the inner sub-problem), a log-likelihood-only rule may be fine here and simply different from the Woodbury-EM rule for a good reason -- but please confirm this is deliberate rather than an inconsistency with the joint-criterion decision elsewhere.
 
 \begin{algorithm}[htbp]
 \caption{FH-EM: maximum-likelihood estimation of $\bm{\Sigma}$}
@@ -453,7 +339,9 @@ Algorithm~\ref{alg:fhem} summarizes the FH-EM procedure derived above. The input
 \end{algorithmic}
 \end{algorithm}
 
-\subsubsection{Solutions}
+\iffalse
+\subsection{Solutions}
+\label{subsec:solutions}
 
 We have used the term Heywood problem loosely so far. It actually refers to three distinct failure mechanisms in this thesis, not one. Table~\ref{tab:heywood-levels} separates them and lists which method addresses each one.
 
@@ -461,19 +349,19 @@ We have used the term Heywood problem loosely so far. It actually refers to thre
 \centering
 \begin{tabular}{p{1.6cm}p{6.3cm}p{1.6cm}p{4.3cm}}
 \toprule
-Level & Failure mechanism & Fixed by & Fixed method \\
+Level & Issue Description & Fixed by & Fixed method \\
 \midrule
-Level 1 & 
+Issue 1 & 
 The E-step prior~\eqref{eq: Overall notation structure} depends on the current $\hat{\mathbf{B}}$, causing $\hat{\bm{\lambda}}_j$ to shrink less along the directions $\hat{\mathbf{B}}$ has already identified. The M-step then enhance the self-confirming loop. &
 \textsc{iso} &
 Replace the E-step prior with isotropic working prior $\tau^2\mathbf{I}$. The shrinkage weight no longer depends on the direction of $\hat{\mathbf{B}}$, so the loop is broken. \\
 \addlinespace
-Level 2 &
+Issue 2 &
 The debias estimator~\eqref{eq:debias-Sigma} subtracts one positive semi-definite matrix from another. Nothing prevents the result from leaving the positive semi-definite cone, which drives $\hat\sigma^2$ to collapse. &
 \textsc{fh-em} &
 Matrix $\mathbf{S}$ in M-step~\eqref{eq:fhem_mstep} is positive definite by construction, so this collapse cannot occur. \\
 \addlinespace
-Level 3 &
+Issue 3 &
 When the true $\sigma^2$ is small or $K$ is misspecified, the likelihood itself favors a solution at or near the boundary. A property of the model and the data, not an artifact of the algorithm. &
 None &
 Not addressed by \textsc{iso}, debias or \textsc{fh-em}. Would require an adjusted likelihood penalty in the M-step, which is left as future work. \\
@@ -482,164 +370,7 @@ Not addressed by \textsc{iso}, debias or \textsc{fh-em}. Would require an adjust
 \caption{Three distinct mechanisms behind the Heywood problem in this thesis, and which correction method addresses each one.}
 \label{tab:heywood-levels}
 \end{table}
-
-\iffalse
-\section{FH-EM Algorithm via Woodbury}
-
-In Section~\ref{sec: EM-wb}, we introduce the EM-algorithm via Woodbury acceleration, and have proved by simulation that Woodbury formula can reduce the runtime significantly. In this section, we manage to adapt the Woodbury structure based on our three methods of optimization, and then give the estimated accuracy and runtime as the simulated results.
-
-\paragraph*{E-step}
-Both $\tilde{\bm\lambda}_j$ and $\mathbf F_j$ in Section~\ref{subsubsec:debias} are read off from the same
-isotropic-prior Laplace solve that Section~\ref{para:fhem-estep} already runs every EM round with
-$\bm\Sigma^{-1}$ replaced by $\tau^{-2}\mathbf{I}_Q$. The Hessian at the isotropic mode
-$\hat{\bm\lambda}_{j}^{\rm iso}$ already has the diagonal-minus-low-rank form,
-\begin{equation}
-    \hat{\mathbf S}_{j}^{-1}=\mathbf{D}_{j}^{\rm iso}-\mathbf{P}_{j}\mathbf{M}_{j}\mathbf{P}_{j}^\top,
-    \qquad
-    \mathbf{D}_{j}^{\rm iso}:=\operatorname{diag}\Big(\textstyle\sum_{i\in\mathcal I_j}y_{i\cdot}\hat{\bm p}_i\Big)+\tau^{-2}\mathbf I_Q.
-    \label{eq:Shat-inv-iso}
-\end{equation}
-Recovering $\mathbf F_j=\hat{\mathbf S}_j^{-1}-\tau^{-2}\mathbf I$ costs nothing beyond subtracting a scalar
-off the diagonal,
-\begin{equation}
-    \mathbf F_j=\mathbf D_j^{\mathrm F}-\mathbf P_j\mathbf M_j\mathbf P_j^\top,
-    \qquad
-    \mathbf D_j^{\mathrm F}:=\operatorname{diag}\Big(\textstyle\sum_{i\in\mathcal I_j}M_i\hat{\bm p}_i\Big),
-    \label{eq:Fj-woodbury}
-\end{equation}
-where $\mathbf D_j^{\mathrm F}$, $\mathbf P_j$, $\mathbf M_j$ are already materializes. Nothing here is recomputed from scratch. Substituting Equation~\eqref{eq:Fj-woodbury} and the Woodbury form of $\bm\Sigma^{-1}$ into the FH-EM posterior precision $\mathbf F_j+\bm\Sigma^{-1}$ and collecting the diagonal and rank parts gives,
-\begin{equation}
-    \mathbf F_j+\bm\Sigma^{-1}
-    =\underbrace{\big(\mathbf D_j^{\mathrm F}+\sigma^{-2}\mathbf I_Q\big)}_{\tilde{\mathbf D}_j}
-    -\underbrace{[\,\mathbf P_j\ \ \mathbf B\,]}_{\tilde{\mathbf U}_j}\,
-    \underbrace{\operatorname{blkdiag}\!\big(\mathbf M_j,\ \sigma^{-4}(\mathbf I_K+\sigma^{-2}\mathbf B^\top\mathbf B)^{-1}\big)}_{\tilde{\mathbf W}_j}\,
-    \tilde{\mathbf U}_j^\top.
-    \label{eq:fhem-Vj-decomp}
-\end{equation}
-This is exactly $\mathbf D_j-\mathbf U_j\mathbf W_j\mathbf U_j^\top$ from Equation~\eqref{eq:combined},
-evaluated at $\bm p_i=\hat{\bm p}_i(\hat{\bm\lambda}_j^{\rm iso})$ instead of at each group's own anisotropic-prior
-mode. The FH-EM posterior precision matrix is therefore not a new object. It is the original E-step Hessian at the first-stage isotropic mode instead of at a fresh Newton solution. No new Woodbury derivation is needed, only a new point at which the existing one is evaluated.
-
-The only genuinely new work is a single $(I_j+K)$-sized solve, since the isotropic solve only ever formed an
-$I_j$-sized $\mathbf Z_j$. Applying the Woodbury identity to Equation~\eqref{eq:fhem-Vj-decomp} gives,
-\begin{equation}
-    \mathbf V_j=\tilde{\mathbf D}_j^{-1}+\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j\,
-    \tilde{\mathbf Z}_j^{-1}\,\tilde{\mathbf U}_j^\top\tilde{\mathbf D}_j^{-1},
-    \qquad
-    \tilde{\mathbf Z}_j:=\tilde{\mathbf W}_j^{-1}-\tilde{\mathbf U}_j^\top\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j,
-    \label{eq:fhem-Vj-woodbury}
-\end{equation}
-at the same $\mathcal O(Q(I_j+K)^2+(I_j+K)^3)$ cost as the base E-step. Unlike the mode-finding E-step, this is a
-single closed-form solve rather than an iterated Newton search. Equation~\eqref{eq:fh-posterior} is an exact Gaussian conditional, so there is no backtracking and no convergence check.
-
-$\mathbf m_j$ has a similar shortcut. Equation~\eqref{eq:pure-data-lambda} gives $\tilde{\bm\lambda}_j=\mathbf F_j^{-1}\hat{\mathbf S}_j^{-1}\hat{\bm\lambda}_j^{\rm iso}$. Left-multiplying by $\mathbf F_j$ cancels $\mathbf F_j^{-1}$,
-\begin{equation}
-    \mathbf F_j\tilde{\bm\lambda}_j=\hat{\mathbf S}_j^{-1}\hat{\bm\lambda}_j^{\rm iso}=:\mathbf b_j.
-    \label{eq:fhem-bj}
-\end{equation}
-So $\mathbf m_j=\mathbf V_j\mathbf b_j$ never needs the pure-data MLE $\tilde{\bm\lambda}_j$ explicitly. $\mathbf b_j$ comes from applying the diagonal-minus-low-rank form~\eqref{eq:Shat-inv-iso} directly to $\hat{\bm\lambda}_j^{\rm iso}$ at $\mathcal O(QN_j)$ and no inversion. The full E-step forms $\mathbf b_j$ and factor $\tilde{\mathbf Z}_j$ in
-Equation~\eqref{eq:fhem-Vj-woodbury}, then calculate $\mathbf m_j=\mathbf V_j\mathbf b_j$. We keep
-$\tilde{\mathbf D}_j^{-1},\tilde{\mathbf U}_j,\tilde{\mathbf Z}_j^{-1}$ around for the M-step below.
-
-\paragraph*{M-step}
-
-Equations~\eqref{eq:tipping-ppca_b}--\eqref{eq:tipping-ppca_sigma} take
-$\mathbf S=\frac1J\sum_j(\mathbf m_j\mathbf m_j^\top+\mathbf V_j)$ and return its leading $K$ eigen-pairs together with $\operatorname{tr}\mathbf S$. There is no way to avoid the eigen-problem itself here. What the Woodbury structure removes is the need to ever form the $Q\times Q$ matrix that gets eigen-decomposed.
-
-Write $\mathbf M:=[\mathbf m_1,\dots,\mathbf m_J]\in\mathbb R^{Q\times J}$. Substituting
-Equation~\eqref{eq:fhem-Vj-woodbury} into $\mathbf S$ splits it into three semi-positive-definite pieces,
-\begin{equation}
-    \mathbf S=\frac1J\mathbf M\mathbf M^\top+\bar{\mathbf D}+\bar{\mathbf C},
-    \quad
-    \bar{\mathbf D}:=\frac1J\sum_{j=1}^J\tilde{\mathbf D}_j^{-1},
-    \quad
-    \bar{\mathbf C}:=\frac1J\sum_{j=1}^J\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j\tilde{\mathbf Z}_j^{-1}
-    \tilde{\mathbf U}_j^\top\tilde{\mathbf D}_j^{-1}.
-    \label{eq:S-operator}
-\end{equation}
-$\bar{\mathbf D}$ is diagonal, so summing $J$ diagonal matrices costs $\mathcal O(JQ)$, which is not a matrix product. $\bar{\mathbf C}$ is a sum of $J$ rank-$(I_j+K)$ semi-positive-definite terms, building entirely from quantities the E-step already computed. None of the three pieces needs to be added into a dense $Q\times Q$ matrix. For any $\mathbf v\in\mathbb R^Q$ and Hadamard product $\odot$, we have,
-\begin{equation}
-    \mathbf S\mathbf v=\frac1J\mathbf M(\mathbf M^\top\mathbf v)+\bar{\mathbf D}\odot\mathbf v +\frac1J\sum_{j=1}^J\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j\Big(\tilde{\mathbf Z}_j^{-1}
-    \big(\tilde{\mathbf U}_j^\top(\tilde{\mathbf D}_j^{-1}\odot\mathbf v)\big)\Big),
-    \label{eq:Sv-matvec}
-\end{equation}
-This step costs $\mathcal O\big(QJ+Q\sum_j(I_j+K))\big)$, where $\mathcal O(QJ)$ cost for the $\mathbf M\mathbf M^\top$ term,
-$\mathcal O(Q)$ cost for the diagonal term and $\mathcal O(Q(N_j+K))$ cost per group for the low-rank term. This matrix-vector product is exactly what a Lanczos iteration needs~\citep{Musco2015}. Running symmetric Lanczos on $\mathbf v\mapsto\mathbf S\mathbf v$ for $m$ steps, with $m$ modestly larger than $K$, gives an $m\times m$
-tri-diagonal matrix whose top $K$ Ritz pairs converge to the leading eigen-pairs $(\hat{\mathbf U}_K,\hat{\bm\Lambda}_K)$
-of $\mathbf S$. The convergence rate depends on the spectral gap between $\lambda_K(\mathbf S)$ and
-$\lambda_{K+1}(\mathbf S)$, not on $Q$. Since $K$ is fixed and small, the total cost is
-$\mathcal O\big(K\cdot (QJ+Q\sum_j(I_j+K))\big)$ against $\mathcal O(Q^3)$ for a dense eigen-decomposition of an
-explicitly formed $\mathbf S$.
-
-$\operatorname{tr}\mathbf S$ does not need the eigen-decomposition either. From Equation~\eqref{eq:fhem-Vj-woodbury} and the cyclic property of trace,
-\begin{equation}
-    \operatorname{tr}\mathbf S=\frac1J\sum_{j=1}^J\Big[\|\mathbf m_j\|^2+\operatorname{tr}\tilde{\mathbf D}_j^{-1}
-    +\operatorname{tr}\Big(\tilde{\mathbf Z}_j^{-1}\big(\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j\big)^\top
-    \tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j\Big)\Big],
-    \label{eq:trS-woodbury}
-\end{equation}
-reusing $\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j$ already formed for Equation~\eqref{eq:fhem-Vj-woodbury}, at
-$\mathcal O((N_j+K)^2)$ per group.
-
-With $(\hat{\mathbf U}_K,\hat{\bm\Lambda}_K)$ and $\operatorname{tr}\mathbf S$ in hand, Equations~\eqref{eq:tipping-ppca_b}-\eqref{eq:tipping-ppca_sigma} give,
-\begin{equation}
-    \hat\sigma^2=\frac{\operatorname{tr}\mathbf S-\operatorname{tr}\hat{\bm\Lambda}_K}{Q-K},
-    \qquad
-    \hat{\mathbf B}=\hat{\mathbf U}_K\big(\hat{\bm\Lambda}_K-\hat\sigma^2\mathbf I_K\big)^{1/2},
-    \label{eq:fhem-wb-mstep-final}
-\end{equation}
-followed by the same PLT normalization as the dense algorithm. As always, $\hat\sigma^2$ is floored at the numerical lower bound whenever the smallest retained eigenvalue in $\hat{\bm\Lambda}_K$ falls below $\hat\sigma^2$.
-
-Putting the two steps together, one full round of Woodbury-accelerated FH-EM costs,
-\begin{equation}
-    \mathcal O\Big(\sum_{j=1}^J\big[Q(I_j+K)^2+(I_j+K)^3\big]+K\cdot Q\big(J+\textstyle\sum_j(I_j+K)\big)\Big),
-    \label{eq:fhem-wb-cost}
-\end{equation}
-against $\mathcal O(JQ^2+Q^3)$ for the dense computation. This is still a reduction of one full order in $Q$. The $QKJ$ term now dominates once $J$ is the large parameter.
-
-\subsection{Algorithm}
-
-\begin{algorithm}[htbp]
-\caption{FH-EM: maximum-likelihood estimation of $\bm{\Sigma}$}
-\label{alg:fhem}
-\begin{algorithmic}[1]
-\Require Isotropic-prior Laplace outputs $\hat{\bm\lambda}_j^{\rm iso}$, $\mathbf D_j^{\rm iso}$, $\mathbf D_j^{\mathrm F}$, $\mathbf P_j$, $\mathbf M_j$, $j=1,\dots,J$, obtained from Stage~1
-\Require Initial values $\mathbf{B}^{(0)}$, $\sigma^{2(0)}$; tolerance $\mathrm{tol}$; maximum iterations $T$; Lanczos steps $m>K$
-\Ensure $\hat{\mathbf{B}}$, $\hat\sigma^2$
-\State $\bm{\Sigma}^{(0)} \gets \mathbf{B}^{(0)}(\mathbf{B}^{(0)})^{\top} + \sigma^{2(0)}\mathbf{I}_Q$
-\State $l^{(0)} \gets l_{\text{FH}}(\bm{\Sigma}^{(0)})$
-\For{$t = 0, 1, 2, \dots, T-1$}
-    \Statex \hspace{\algorithmicindent}\textit{E-step}
-    \For{$j = 1, \dots, J$}
-        \State $\tilde{\mathbf D}_j \gets \mathbf D_j^{\mathrm F} + \big(\sigma^{2(t)}\big)^{-1}\mathbf I_Q$
-        \State $\tilde{\mathbf U}_j \gets [\,\mathbf P_j\ \ \mathbf B^{(t)}\,]$
-        \State $\tilde{\mathbf W}_j \gets \operatorname{blkdiag}\Big(\mathbf M_j,\ \big(\sigma^{2(t)}\big)^{-2}\big(\mathbf I_K+\big(\sigma^{2(t)}\big)^{-1}(\mathbf B^{(t)})^\top\mathbf B^{(t)}\big)^{-1}\Big)$
-        \State $\mathbf b_j \gets \mathbf D_j^{\rm iso}\hat{\bm\lambda}_j^{\rm iso} - \mathbf P_j\big(\mathbf M_j(\mathbf P_j^\top\hat{\bm\lambda}_j^{\rm iso})\big)$
-        \State $\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j \gets$ divide each column of $\tilde{\mathbf U}_j$ by $\operatorname{diag}(\tilde{\mathbf D}_j)$
-        \State $\tilde{\mathbf Z}_j \gets \tilde{\mathbf W}_j^{-1} - \tilde{\mathbf U}_j^\top(\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j)$
-        \State Factor $\tilde{\mathbf Z}_j$ (Cholesky); cache $\tilde{\mathbf Z}_j^{-1}$
-        \State $\mathbf m_j \gets \tilde{\mathbf D}_j^{-1}\mathbf b_j + (\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j)\Big(\tilde{\mathbf Z}_j^{-1}\big((\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j)^\top\mathbf b_j\big)\Big)$
-    \EndFor
-    \Statex \hspace{\algorithmicindent}\textit{M-step}
-    \State $\mathbf M \gets [\mathbf m_1,\dots,\mathbf m_J]$
-    \State $\bar{\mathbf D} \gets \dfrac{1}{J}\displaystyle\sum_{j=1}^{J} \tilde{\mathbf D}_j^{-1}$
-    \State operator $\mathbf S: \mathbf v \mapsto \dfrac{1}{J}\mathbf M(\mathbf M^\top\mathbf v) + \bar{\mathbf D}\odot\mathbf v + \dfrac{1}{J}\displaystyle\sum_{j=1}^{J}(\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j)\Big(\tilde{\mathbf Z}_j^{-1}\big((\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j)^\top\mathbf v\big)\Big)$
-    \State run symmetric Lanczos on $\mathbf v\mapsto\mathbf S\mathbf v$ for $m$ steps to obtain top-$K$ Ritz pairs $(\hat{\mathbf U}_K,\hat{\bm\Lambda}_K)$
-    \State $\operatorname{tr}\mathbf S \gets \dfrac{1}{J}\displaystyle\sum_{j=1}^{J}\Big[\|\mathbf m_j\|^2 + \operatorname{tr}\tilde{\mathbf D}_j^{-1} + \operatorname{tr}\Big(\tilde{\mathbf Z}_j^{-1}(\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j)^\top(\tilde{\mathbf D}_j^{-1}\tilde{\mathbf U}_j)\Big)\Big]$
-    \State $\sigma^{2(t+1)} \gets \max\Big(\dfrac{\operatorname{tr}\mathbf S - \operatorname{tr}\hat{\bm\Lambda}_K}{Q-K},\ \sigma^2_{\min}\Big)$
-    \State $\mathbf{B}^{(t+1)} \gets \hat{\mathbf U}_K\big(\hat{\bm\Lambda}_K - \sigma^{2(t+1)}\mathbf I_K\big)^{1/2}$
-    \State apply PLT normalization to $\mathbf{B}^{(t+1)}$
-    \State $\bm{\Sigma}^{(t+1)} \gets \mathbf{B}^{(t+1)}(\mathbf{B}^{(t+1)})^{\top} + \sigma^{2(t+1)}\mathbf{I}_Q$
-    \State $l^{(t+1)} \gets l_{\text{FH}}(\bm{\Sigma}^{(t+1)})$
-    \If{$\left|l^{(t+1)} - l^{(t)}\right| < \mathrm{tol}$}
-    \State \textbf{break}
-    \EndIf
-\EndFor
-\State \Return $\hat{\mathbf{B}} \gets \mathbf{B}^{(t+1)}$, $\hat\sigma^2 \gets \sigma^{2(t+1)}$
-\end{algorithmic}
-\end{algorithm}
-\fi 
+\fi
 
 \section{Consistency \& Asymptotics}
 \label{sec:asymptotical-properties}
-

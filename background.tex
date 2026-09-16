@@ -1,155 +1,200 @@
 \chapter{Background}
 \label{cha:model-specification}
 
-Given the notation of our thesis in section~\ref{sec:model-setup}, we start from the  literature review in section~\ref{sec:literature-review}, the introduction of Poisson-Multinomial Equivalence in section~\ref{sec:PME}, and then EM (Expectation-Maximization) algorithm.
+This chapter has three parts. Section~\ref{sec:model-setup-assumption} sets out the model, the Poisson--Multinomial equivalence, and the identifiability constraints the model requires. Section~\ref{sec:literature-review} reviews the related literature. Section~\ref{sec: em-algorithm-relatives} reviews the classical EM algorithm and the methods most closely related to ours.
+% REVISION NOTE: the original roadmap paragraph referenced \ref{sec:model-setup} and \ref{sec:PME}, neither of which matched an existing \label in this chapter (the section is actually labelled sec:model-setup-assumption, and no \label{sec:PME} existed anywhere). The stated order (model setup, literature review, PME, EM) also did not match the chapter's actual order (model setup+PME together, then literature review, then EM). I added \label{sec:PME} at the natural point below (just before the Baker1994 discussion) and rewrote this paragraph to match the real structure. Please grep the rest of the thesis for \ref{sec:model-setup} and \ref{sec:PME} in case the old broken references are used elsewhere too.
 
-\section{Models}
-\label{sec:model-setup}
-Let $\bm{y}_{ij} = (y_{ij1}, \dots, y_{ijQ})^\top \in \mathbb{Z}_{\geq 0}^Q$ be the response for $i=1,2,\dots,I_{j}$ observational units in cluster $j=1,2,\dots ,J$. The entries of $\bm{y}_{ij}$ denote the count representing category-specific choices spanning $Q$ distinct categories. A vector of covariates, $\bm{v}_{ij}\in \mathbb{R}^{P}$, may also be recorded for each unit. Let $y_{ij\cdot}=\sum_{q=1}^{Q}y_{ijq}$ denote the Multinomial total sum for observation $i$ in group $j(i)$ across $Q$ categories. We omit a constant term from $\bm{v}_{ij}$ to avoid redundancy with the category-specific intercepts already captured by main effects $\bm{\mu}$. Conditional on the total count $y_{ij\cdot}$ and random effects $\bm{\lambda}_{j}\in \mathbb{R}^{Q}$, each observation follows a Multinomial distribution:
+\section{Models \& Assumptions}
+\label{sec:model-setup-assumption}
+
+\subsection{Model Setup}
+\label{subsec:model-setup}
+
+Let $\bm{y}_{ij}=(y_{ij1},\dots,y_{ijQ})^\top\in\mathbb{Z}_{\geq0}^Q$ be the response for observational unit $i=1,2,\dots,I_j$ in group $j=1,2,\dots,J$. The entries of $\bm{y}_{ij}$ are counts over $Q$ distinct categories. A vector of covariates $\bm{v}_{ij}\in\mathbb{R}^P$ is also recorded for each unit. Let $y_{ij\cdot}=\sum_{q=1}^Q y_{ijq}$ denote the multinomial total for unit $i$ in group $j(i)$. We omit a constant term from $\bm{v}_{ij}$, since it would be redundant with the category-specific intercepts already captured by $\bm\mu$. Conditional on the total count $y_{ij\cdot}$ and on the random effect $\bm\lambda_j\in\mathbb{R}^Q$, each observation follows a multinomial distribution,
 \begin{equation}
-    \bm{y}_{ij} \mid  y_{ij\cdot} , \bm{\lambda}_{j}
-    \sim \operatorname{Multinomial}\left(y_{ij\cdot},\, \bm{p}_{ij}\right), \quad p_{ijq}=\frac{\exp(\eta_{ijq})}{\sum_{q'=1}^{Q}\exp(\eta_{ijq'})},
-    \label{eq:conditional-pm}
+\bm{y}_{ij}\mid y_{ij\cdot},\bm\lambda_j\sim\operatorname{Multinomial}\left(y_{ij\cdot},\,\bm{p}_{ij}\right),\qquad p_{ijq}=\frac{\exp(\eta_{ijq})}{\sum_{q'=1}^Q\exp(\eta_{ijq'})},
+\label{eq:conditional-pm}
 \end{equation}
-with log-linear predictor,
+with log-linear predictor
 \begin{equation}
-    \eta_{ijq}=\mu_{q}+\bm{v}_{ij}^{\top}\bm{\phi}_{q}+
-    \lambda_{jq}, \quad q=1,2,\dots, Q,
-    \label{eq:linear-predictor}
+\eta_{ijq}=\mu_q+\bm{v}_{ij}^\top\bm\phi_q+\lambda_{jq},\qquad q=1,2,\dots,Q,
+\label{eq:linear-predictor}
 \end{equation}
-where $\mu_{q}\in\mathbb{R}$ is the category-specific intercept. In this thesis, we focus on the contribution $\bm{\lambda}_{j}$ of group $j$ to the log-relative-rate of category $q$. Equation~\eqref{eq:linear-predictor} extends the linear predictor of DMR \citep{Taddy2015} and of the Poisson extension of \citet{Lee2017}; the three models differ only in the distribution placed on $\bm{\lambda}_{j}$.
+where $\mu_q\in\mathbb{R}$ is the category-specific intercept and $\bm\Phi=(\bm\phi_1,\dots,\bm\phi_Q)$ collects the category-specific coefficient vectors.
+% REVISION NOTE: added a definition for \bm\Phi. The symbol was used later, in "(\bm\mu,\bm\Phi,\bm\lambda_j)", without ever being introduced; please confirm this is the intended definition.
+This thesis is concerned with the contribution $\bm\lambda_j$ of group $j$ to the log-relative-rate of category $q$. Equation~\eqref{eq:linear-predictor} extends the linear predictor of DMR \citep{Taddy2015} and of the Poisson extension of \citet{Lee2017}; the three models differ only in the distribution placed on $\bm\lambda_j$.
 
-The softmax link in \eqref{eq:conditional-pm} is invariant under the shift $\eta_{ijq}\mapsto\eta_{ijq}+c_{ij}$ for any constant $c_{ij}$ common to all categories, so the intercepts $\bm{\mu}=(\mu_{1},\dots,\mu_{Q})$ are identified only up to an additive constant. We remove the indeterminacy by sum-to-zero constraint $\sum_{q}\mu_{q}=0$, which automatically restores by the Poisson representation introduced below.
+% The softmax link in Equation~\eqref{eq:conditional-pm} is invariant under the shift $\eta_{ijq}\mapsto\eta_{ijq}+c_{ij}$ for any constant $c_{ij}$ common to all categories, so the intercepts $\bm\mu=(\mu_1,\dots,\mu_Q)$ are identified only up to an additive constant. We remove this indeterminacy with the constraint $\sum_q\mu_q=0$.
 
-% Need to polish the writing
-Throughout, we treat the total sum $y_{ij\cdot}$ as ancillary for $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. We assume its generating mechanism carries no information about these parameters beyond what they already encoded, so conditioning on $y_{ij\cdot}$ in \eqref{eq:conditional-pm} loses no relevant information. This is standard in Multinomial regression, but it is not automatic. We do not attempt a joint model of volumn and composition  here. To be clear, ancillarity is about information, not determinism: the total is still random, its distribution just carries no extra information about $(\bm{\mu},\bm{\Phi},\bm{\lambda}_{j})$. In Section~\ref{sec:PME}, we use the Poisson-Multinomial equivalence to represent each $y_{ijq}$ as an independent Poisson variate, whose offset $\xi_{ij}$ absorbs the (random) total. Conditioning on $y_{ij\cdot}$ recovers the Multinomial conditional in \eqref{eq:conditional-pm} exactly. We treat $\xi_{ij}$ as a computational device but not a modeling claim about the total.
+% REVISION NOTE: the original sentence continued "...which automatically restores by the Poisson representation introduced below." I could not work out what this clause was asserting (restores what, exactly?) and have removed it rather than guess. If you meant that the sum-to-zero constraint on mu is mirrored by an analogous constraint that falls out of the Poisson representation below, please restate that explicitly and I will fold it back in precisely.
 
-The group random effects are assumed independently and identically distributed:
+Throughout, we treat the total $y_{ij\cdot}$ as ancillary for $(\bm\mu,\bm\Phi,\bm\lambda_j)$. We assume its distribution carries no information about these parameters beyond what is already encoded in $\bm{p}_{ij}$, so conditioning on $y_{ij\cdot}$ in Equation~\eqref{eq:conditional-pm} loses no relevant information. This is standard practice in multinomial regression, but it is an assumption, not an automatic consequence of the model, and we do not attempt to model volume and composition jointly here. To be precise, ancillarity is a statement about information, not about determinism: the total is still random, and only its distribution is assumed uninformative about $(\bm\mu,\bm\Phi,\bm\lambda_j)$. Later in this section we use the Poisson-Multinomial equivalence to represent each $y_{ijq}$ as an independent Poisson variate whose offset $\xi_{ij}$ absorbs the random total; conditioning on $y_{ij\cdot}$ recovers Equation~\eqref{eq:conditional-pm} exactly. We treat $\xi_{ij}$ as a computational device, not as a modeling claim about the total.
 
+The group random effects are assumed independently and identically distributed,
 \begin{equation}
-    \bm{\lambda}_{j}\sim \mathcal{N}(\bm{0},\bm{\Sigma}), \quad \bm{\Sigma}=\mathbf{BB}^{\top}+\mathbf{D},
-    \label{eq: Overall notation structure}
+\bm\lambda_j\sim\mathcal{N}(\bm0,\bm\Sigma),\qquad\bm\Sigma=\mathbf{B}\mathbf{B}^\top+\mathbf{D},
+\label{eq: Overall notation structure}
 \end{equation}
-where $\mathbf{B}\in \mathbb{R}^{Q\times K}$ is the factor loadings matrix and $\mathbf{D}$ is the variance. Equivalently, in the factor regression form:
-
+where $\mathbf{B}\in\mathbb{R}^{Q\times K}$ is the factor-loading matrix and $\mathbf{D}$ is the idiosyncratic-variance matrix. Equivalently, in factor-regression form,
 \begin{equation}
-    \bm{\lambda}_{j}=\mathbf{B}\mathbf{f}_{j}+
-    \bm{\epsilon}_{j}, \quad \mathbf{f}_{j}\sim \mathcal{N}(\bm{0},\bm{I}_{K}), \quad \bm{\epsilon}_{j}\sim \mathcal{N}(\bm{0},\mathbf{D}),
-    \label{eq: Detailed notation structure}
+\bm\lambda_j=\mathbf{B}\mathbf{f}_j+\bm\epsilon_j,\qquad\mathbf{f}_j\sim\mathcal{N}(\bm0,\mathbf{I}_K),\qquad\bm\epsilon_j\sim\mathcal{N}(\bm0,\mathbf{D}),
+\label{eq: Detailed notation structure}
 \end{equation}
-so that $\lambda_{jq}=\mathbf{b}_{q}^{\top}\mathbf{f}_{j}+\epsilon_{jq}$, where $\mathbf{b}_{q}$ is the q-th row of $\mathbf{B}$. We assume each group $j$ has a $K$-dimensional factor $\bm{f}_{j}$ choosing from $Q$ distinct categories, where $K$ is known. In this application, each loading entries of $\bm{\lambda}_{j}$ represents the cluster information by measuring the significance of how cluster $j$ loads on each of the latent factors. We adopt the category of orthogonal latent factors \citep{Cui2026}, which assumed to be independent and illustrated the relationship of factors in our group random effects \eqref{eq: Detailed notation structure}. Finally, we assume $\mathbf{D}=\sigma^{2}\mathbf{I}_{Q}$ with $\sigma^{2} >0$ rather than the fully diagonal $\mathbf{D}=\text{diag}(d_{1}^{2},\dots,d_{Q}^{2})$ with entries $d_{q}>0$ for the model simplification. 
+so that $\lambda_{jq}=\mathbf{b}_q^\top\mathbf{f}_j+\epsilon_{jq}$, where $\mathbf{b}_q$ is the $q$-th row of $\mathbf{B}$. Each group $j$ has a $K$-dimensional factor $\mathbf{f}_j$, where $K$ is known and $K<Q$. In this application, each entry of a loading row $\mathbf{b}_q$ measures how strongly category $q$ loads on a given latent factor, so $\mathbf{f}_j$ summarizes cluster-level information shared across categories. We follow \citet{Cui2026} in assuming the $K$ latent factors are mutually independent, as in Equation~\eqref{eq: Detailed notation structure}. Finally, for model simplicity we assume $\mathbf{D}=\sigma^2\mathbf{I}_Q$ with $\sigma^2>0$, rather than the fully diagonal $\mathbf{D}=\operatorname{diag}(d_1^2,\dots,d_Q^2)$ with $d_q>0$.
+% Revison: change the reason of choosing isotropic variance
+
+\paragraph{Poisson-Multinomial equivalence.}
+\label{sec:PME}
+The Poisson-Multinomial equivalence established by \citet{Baker1994} states that the multinomial likelihood conditional on the individual sum $y_{ij\cdot}$ is exactly equivalent to a product of independent Poisson likelihoods sharing a common additive offset,
+\begin{equation}
+\xi_{ij}=\log y_{ij\cdot}-\log\sum_{q=1}^Q\exp(\eta_{ijq}).
+\label{eq:xi_baker}
+\end{equation}
+The joint draw $\bm{y}_{ij}\mid\bm\lambda_j\sim\operatorname{Multinomial}(y_{ij\cdot},\bm{p}_{ij})$ is equivalent to $y_{ijq}\mid\bm\lambda_j\sim\operatorname{Poisson}(\exp(\eta_{ijq}+\xi_{ij}))$ independently across $q=1,\dots,Q$, conditional on $y_{ij\cdot}$, with $\eta_{ijq}$ and $\bm{p}_{ij}$ as defined in Equations~\eqref{eq:conditional-pm}--\eqref{eq:linear-predictor}. The offset in Equation~\eqref{eq:xi_baker} absorbs the softmax normalizer and decouples the $Q$ Poisson problems, so they can be solved independently.
+
+\citet{Lee2017} extended the framework of \citet{Baker1994} by treating the aggregate count $y_{ij\cdot}$ itself as Poisson-distributed given the group effect $\bm\lambda_j$, rather than fixing it as the conditioning variable in the multinomial likelihood. Marginalizing over this random aggregate recovers the same factorization into independent Poisson components across $q=1,\dots,Q$; $\xi_{ij}$ then becomes the rate parameter of the induced Poisson distribution rather than a fixed conditioning quantity. In our EM algorithm, the M-step therefore can be decomposed into $Q$ parallel GLM problems, one per category.
+
+Our model specification follows the group-level random-effects multinomial model of \citet{Lee2017}. That framework builds the probability vector from a multiplicative random effect $\lambda_{iq}$ and a fixed part $\zeta_{ijq}$ through $p_{ijq}=\lambda_{jq}\zeta_{ijq}/\sum_q\lambda_{jq}\zeta_{ijq}$. On the log scale this is exactly the softmax, so our $\exp(\lambda_{jq})$ and $\exp(\mu_q+\bm{v}_{ij}^\top\bm\phi_q)$ correspond to their $\lambda_{jq}$ and $\zeta_{ijq}$ respectively. The Poisson forms in their works are a computational surrogate rather than a different model: the likelihood decomposition shows that, provided each observation carries a free parameter $\delta_{ij}$, the Poisson log-likelihood splits into a Poisson part for the totals and a multinomial part for the composition given the totals, and  the former is saturated at $\hat\delta_{ij}=y_{ij+}/\zeta_{ij+}$ and carries no information about $\bm\lambda$. Treating the totals as random with a free $\delta_{ij}$ is therefore exactly equivalent, for inference on $\bm\lambda$, to conditioning on the totals, and our use of the latter is not an approximation.
+
+\citet{Lee2017} also states explicitly that the formulation carries two sources of non-identifiability, one between $\lambda_{jq}$ and the observation-level parameter $\delta_{ij}$, and one between $\lambda_{jq}$ and the category intercepts. The second is removed by setting $\mathbb{E}(\lambda_{iq})=1$, so that $\lambda_{jq}\sim\mathcal{G}(1/\beta_q,\beta_q)$. In our specification this corresponds to $\mathbb{E}(\bm\lambda_j)=\bm0$, which is already implied by our distributional assumption. The first requires separate treatment, since $\bm{\lambda}_{j}\mapsto \bm{c}\bm{\lambda}_{j}$ leaves every $\bm{p}_{ij}$ unchanged while $\delta_{ij}$, being indexed by observation rather than by group, cannot absorb it. That framework removes it by fixing the baseline category, $\lambda_{i1}=1$, and notes that this is equivalent to placing the random effects on the $Q-1$ logits with a $(Q-1)\times(Q-1)$ covariance matrix, in line with the multivariate normal specification used by Agresti and by Hartzel et al.\ (citation needed - please supply the exact reference, as cited in Lee2017). We adopt the sum-to-zero gauge $\mathbf{1}^\top\bm\lambda_j=\mathbf{0}$ and $\mathbf{1}^\top\mathbf{B}=\mathbf{0}^\top$ rather than the baseline-category constraint, which will be explained in the next section.
+
+\subsection{Identifiability}
+\label{subsec:identifiability}
+
+The identifiability of FA-DMR has two independent sources, coming from two different parts of the model. The first is the classical rotational indeterminacy of any factor structure, inherited from the assumption $\bm{\Sigma}=\mathbf{B}\mathbf{B}^{\top}+\sigma^{2}\mathbf{I}$ itself. The second is specific to our observation model, coming from the softmax link that connects the group-level random effect to the multinomial probabilities. We treat the two in turn, since they call for different fixes and are removed by different conventions.
+
+\subsubsection{Rotational Indeterminacy of the Loading Matrix}
+\label{subsubsec:rotational-indeterminacy}
+
+Because $\left(\mathbf{B}\mathbf{Q}\right)\left(\mathbf{B}\mathbf{Q}\right)^{\top}=\mathbf{B}\mathbf{B}^{\top}$ for any orthogonal matrix $\mathbf{Q}$, $\bm{\Sigma}$ only ever pins down $\mathbf{B}$ up to the right action of the orthogonal group $O(K)$. This is the ordinary rotational indeterminacy of factor analysis, and it has nothing to do with the multinomial observation model. We remove it with the positive-lower-triangular (PLT) constraint: the leading $K$ rows of $\mathbf{B}$ are constrained to be lower triangular with positive diagonal entries. In the identification-condition framework of \citet{Cui2026}, this is exactly their condition $\mathrm{IC}^{(2)}$: lower-triangular with nonzero diagonal, up to a row/column permutation that we fix by our choice of which $K$ categories anchor the triangular block. $\mathrm{IC}^{(2)}$ by itself identifies $\mathbf{B}$ only up to sign. The triangular zero pattern removes the continuous $O(K)$ rotational freedom, but the discrete sign-flip subgroup $\{\pm1\}^K$ still leaves $\mathbf{B}\mathbf{B}^\top$ unchanged under $\mathbf{b}_k\mapsto-\mathbf{b}_k$. The positive-diagonal requirement removes this separately. It is a normalization added on top of $\mathrm{IC}^{(2)}$, not implied by it, and we state it as its own convention rather than folding it into the citation.
+
+\subsubsection{Gauge Indeterminacy from the Softmax Link}
+\label{subsubsec:gauge-indeterminacy}
+
+The second source of non-identifiability is unrelated to the factor structure. The group-level random effect $\bm{\lambda}_j\in\mathbb{R}^Q$ enters the observation model only through $\operatorname{softmax}(\bm{\eta}_j)$, and
+\begin{equation}
+\operatorname{softmax}(\bm{\eta}_j+c\mathbf{1})=\operatorname{softmax}(\bm{\eta}_j),
+\label{eq:softmax-invariance}
+\end{equation}
+for every $c\in\mathbb{R}$, since $\mathbf{1}_Q=(1,\ldots,1)^\top$ spans a direction the softmax is blind to. Consequently $\bm{\lambda}_j$ and $\bm{\lambda}_j+c\mathbf{1}$ give identical likelihood values for every $c$: this is the standard indeterminacy of the multivariate logit in every softmax/multinomial-logit model. The factor model $\bm{\Sigma}=\mathbf{B}\mathbf{B}^\top+\sigma^2\mathbf{I}$ on $\mathbb{R}^{Q\times Q}$ is perfectly well identified once rotation is fixed, as in Section~\ref{subsubsec:rotational-indeterminacy} and in the classical treatments of \citet{Rubin1982} and \citet{Tipping1999}, where the observation map is the identity and every direction of $\mathbb{R}^Q$ carries information. The indeterminacy here comes entirely from the link: a multinomial response lives on the $(Q-1)$-dimensional simplex, while the softmax parametrization uses $Q$ free coordinates, and the redundant coordinate is exactly the all-ones direction. The observation map has a one-dimensional kernel, which propagates from $\bm{\lambda}_j$ to $\bm{\Sigma}$ and hence to $\mathbf{B}$. Changing the link does not help: if the multinomial is replaced by independent Poisson counts with a free row parameter, the shift $\bm{\lambda}_j\mapsto\bm{\lambda}_j+c_j\mathbf{1}$ is absorbed by the row parameter, and the direction remains unidentified. This is a property of modeling a composition with $Q$ group-level parameters, not a defect of the softmax function.
+
+There are two standard ways to remove this indeterminacy: fixing a reference category, $\eta_{s}\equiv0$, or a sum-to-zero normalization, $\mathbf{1}^\top\bm{\eta}\equiv0$. We use the second, imposed on the loadings rather than on $\bm{\lambda}_j$ directly,
+\begin{equation}
+\mathbf{1}_{Q}^{\top}\mathbf{B}=\mathbf{0}^{\top}.
+\label{eq:gauge-constraint}
+\end{equation}
+For a compositional response this convention is the natural one, since adding a constant to a column of $\mathbf{B}$ leaves every composition unchanged, so only contrasts among categories carry meaning. Our choice coincides with the deviation constraints used in the nominal response model \citep{Bock1972} and with the centered log-ratio convention in compositional data analysis \citep{Aitchison1982,Aitchison1986}.
+
+We now explain why we choose the sum-to-zero gauge rather than a reference category. The two constraints remove the same single degree of freedom, and are entirely equivalent for an unstructured covariance matrix. They are not equivalent here, because we impose the isotropic uniqueness structure $\bm{\Sigma}=\mathbf{B}\mathbf{B}^\top+\sigma^2\mathbf{I}$. The sum-to-zero gauge is related to isometric log-ratio (ILR) coordinates by an orthogonal transformation, under which isotropy is preserved; reference-category (additive log-ratio, ALR) coordinates are not isometric, and they mix the variation of the reference category into every remaining coordinate. Assuming isotropic uniqueness in ALR coordinates therefore specifies a genuinely different model.
+
+The sum-to-zero gauge has two further practical advantages. It is equivariant to relabeling of the categories, whereas results under a reference-category constraint depend on which category is chosen, and every category retains its own row of loadings, which matters for interpretation and display. This is our reason for preferring the sum-to-zero gauge, even though the reference-category constraint would fit more directly into existing characterizations of identifiability conditions for generalized latent factor models \citep{Cui2026}.
+
+Under Equation~\eqref{eq:gauge-constraint}, letting $\mathbf{V}\in\mathbb{R}^{Q\times(Q-1)}$ be an orthonormal basis of $\mathbf{1}^\perp$, our model is exactly a $(Q-1)$-dimensional probabilistic principal component model in isometric log-ratio coordinates with the same isotropic variance $\sigma^2$,
+\begin{equation}
+\operatorname{Var}(\mathbf{V}^\top\bm{\lambda}_j)=(\mathbf{V}^\top\mathbf{B})(\mathbf{V}^\top\mathbf{B})^\top+\sigma^2\mathbf{I}_{Q-1}.
+\label{eq:ilr-ppca}
+\end{equation}
+A direct consequence of Equation~\eqref{eq:ilr-ppca} is that the closed-form update for $\sigma^2$ must use $Q-1-K$ rather than $Q-K$ in the denominator, since the observation space effectively has $Q-1$ dimensions, of which $K$ are taken by the factors. Using $Q-K$ includes an eigenvalue that is identically zero in the average, and biases $\hat\sigma^2$ downward by a factor $(Q-1-K)/(Q-K)$. We emphasize that this ``$-1$'' counts a dimension of the observation space, and is unrelated to the familiar $-1$ that arises from estimating a mean. In our implementation we compute in isometric coordinates and report in centred log-ratio coordinates, the two being connected exactly by $\mathbf{V}\mathbf{V}^\top=\bm\Pi$; this is standard practice in compositional data analysis, since the choice of isometric basis is itself arbitrary while the centred log-ratio representation is basis-free.
+
+The Fisher information of $\bm{\lambda}_j$ is, by Equation~\eqref{eq:likelihood-part},
+\begin{equation}
+    \mathbf{F}_{j}=\operatorname{diag}(\mathbf{d}_{j})-\mathbf{P}_{j}\operatorname{diag}(\mathbf{M}_{j})\mathbf{P}_{j}^{\top},
+    \qquad \mathbf{d}_{j}=\mathbf{P}_{j}\mathbf{M}_{j} .
+\end{equation}
+Since each column of $\mathbf{P}_j$ is a probability vector, $\mathbf{P}_j^\top\mathbf{1}_Q=\mathbf{1}_{I_j}$, and therefore
+\begin{equation}
+    \mathbf{F}_{j}\mathbf{1}_{Q}=\mathbf{d}_{j}-\mathbf{P}_{j}\mathbf{M}_{j}=\mathbf{0} .
+    \label{eq:F-singular}
+\end{equation}
+This is an exact algebraic identity rather than a numerical approximation, and it requires nothing beyond the columns of $\mathbf{P}_j$ summing to one. In particular, it holds irrespective of how many categories are observed with zero counts. Moreover, since $p_{iq}=\exp(\eta_{iq})/\sum_{r}\exp(\eta_{ir})$ is strictly positive for any finite $\bm{\eta}_i$, each summand $y_{i\cdot}(\operatorname{diag}(\bm{p}_i)-\bm{p}_i\bm{p}_i^\top)$ has null space exactly $\operatorname{span}(\mathbf{1})$, so that $\operatorname{rank}\mathbf{F}_j=Q-1$ and the null space is exactly one-dimensional. The data therefore carry zero information about the component of $\bm{\lambda}_j$ along the direction $\mathbf{1}$.
+
+We write $\bm{\Pi}=\mathbf{I}_Q-Q^{-1}\mathbf{1}\mathbf{1}^\top$ for the projection onto $\mathbf{1}^\perp$, and $\mathbf{u}:=\mathbf{1}_Q/\sqrt{Q}$ for the unit vector spanning the complementary direction, so that $\mathbf{u}\mathbf{u}^\top=\mathbf{I}_Q-\bm{\Pi}$ is the projection onto $\operatorname{span}(\mathbf{1})$. Since the likelihood depends on $\bm{\lambda}_j$ only through $\operatorname{softmax}(\bm{\eta}_j)$, and Equation~\eqref{eq:F-singular} shows this dependence is flat along $\mathbf{1}$, the likelihood is in fact a function of $\bm{\Pi}\bm{\lambda}_j$ alone. Because $\bm{\Pi}\bm{\lambda}_j$ is a linear transformation of the Gaussian vector $\bm{\lambda}_j$, its distribution is determined entirely by its covariance,
+\begin{equation}
+\operatorname{Var}(\bm{\Pi}\bm{\lambda}_j)=\bm{\Pi}\bm{\Sigma}\bm{\Pi}^\top=\bm{\Pi}\bm{\Sigma}\bm{\Pi},
+\end{equation}
+using the symmetry of $\bm{\Pi}$. This is the covariance matrix that governs the likelihood once the non-informative direction has been removed, and it is the reason the sandwich $\bm{\Pi}(\cdot)\bm{\Pi}$, rather than $\bm{\Pi}(\cdot)$ alone, is the object with a variance interpretation. Two covariance matrices $\bm{\Sigma}$ and $\bm{\Sigma}'$ are therefore observationally equivalent whenever $\bm{\Pi}\bm{\Sigma}\bm{\Pi}=\bm{\Pi}\bm{\Sigma}'\bm{\Pi}$: the resulting marginal likelihood is then identical for every dataset, not merely asymptotically indistinguishable. The identified parameter is thus $\bm{\Sigma}_\perp:=\bm{\Pi}\bm{\Sigma}\bm{\Pi}$, and the loading matrix is identified only up to $\mathbf{B}\mapsto\mathbf{B}+\mathbf{1}\mathbf{a}^\top$ for arbitrary $\mathbf{a}\in\mathbb{R}^K$. Equation~\eqref{eq:gauge-constraint} removes exactly the $K$ degrees of freedom of this family; together with the PLT constraint of Section~\ref{subsubsec:rotational-indeterminacy}, which removes the remaining $O(K)$ rotational and sign freedom, $\mathbf{B}$ is then determined uniquely. As established above, this is equivalent to a $(Q-1)$-dimensional PPCA problem in ILR coordinates.
+
+The result above pins down $\mathbf{B}$ once the gauge constraint is imposed. In practice, however, an estimation algorithm need not impose it explicitly, and different algorithms can drift toward different representatives of the same equivalence class. To quantify this drift for a given estimate $\hat{\mathbf{B}}$, decompose its squared Frobenius norm along $\mathbf{1}^\perp$ and along $\mathbf{1}$:
+\begin{equation}
+    \|\hat{\mathbf{B}}\|^{2}_{\mathrm{F}}=\|\bm{\Pi}\hat{\mathbf{B}}\|^{2}_{\mathrm{F}}+\|\hat{\mathbf{B}}^{\top}\mathbf{u}\|^{2},
+    \label{eq:decomp-loading-matrix}
+\end{equation}
+where the first term on the right is the identified part and the second is carried entirely by the gauge, and, as we show below, can be projected away at no cost. We define the \emph{gauge loading fraction} as the share of energy in the second term,
+\begin{equation}
+\mathrm{GLF}(\hat{\mathbf{B}})=\frac{\lVert\hat{\mathbf{B}}^\top\mathbf{u}\rVert^2}{\lVert\hat{\mathbf{B}}\rVert_F^2}\in[0,1],
+\label{eq:glf}
+\end{equation}
+which is exactly $0$ when Equation~\eqref{eq:gauge-constraint} holds and $1$ when the loadings lie entirely in the unidentified direction. Equation~\eqref{eq:decomp-loading-matrix} is a genuine variance decomposition, in the same spirit as the communality ratio of classical factor analysis. GLF can be computed for the output of any method, including software whose model is parametrized differently from ours.
 
 \iffalse
-This reflects the modeling view that, once the factor structure $\mathbf{B}$ and the intercepts $\mu$ have absorbed the systematic between-category structure, the residual noise has no a prior reason to differ across categories. It also keeps the parameter count in $\mathbf{D}$ from growing with $Q$. As a further benefit, this choice simplifies the Woodbury reduction introduced in Chapter~\ref{cha:computational-acceleration}, whose complexity expression is considerably harder to state under the fully diagonal assumption. 
+Applying Equation~\eqref{eq:glf} across our estimators reveals a clean, and to us unexpected, pattern that splits into three groups by the prior used in the E-step. Methods whose E-step uses the anisotropic prior $\mathcal{N}(\mathbf{0},\bm{\Sigma})$ give $\mathrm{GLF}\in[0.65,0.81]$, growing with $Q$. Methods whose E-step uses the isotropic working prior $\mathcal{N}(\mathbf{0},\tau^2\mathbf{I})$ give $\mathrm{GLF}$ identically zero. The reference software gives values in $[0.12,0.18]$, intermediate between the two. The mechanism is a self-reinforcing loop: since the likelihood is exactly flat along $\mathbf{1}$ by Equation~\eqref{eq:F-singular}, the corresponding component of $\hat{\bm{\lambda}}_j$ is determined by the prior alone. If $\mathbf{B}$ already has a component along $\mathbf{1}$, the eigenvalue of $\bm{\Sigma}$ in that direction is large, the prior precision there is small, the penalty on that component of $\hat{\bm{\lambda}}_j$ is weak, the M-step observes a large variance there, and $\mathbf{B}$ acquires a still larger component. The isotropic prior breaks the loop because it centers the mode automatically: the stationary condition along $\mathbf{1}$ reads $-\tau^{-2}\mathbf{1}^\top\bm{\lambda}=0$, so $\mathbf{1}^\top\hat{\bm{\lambda}}_j=0$ by construction, confirmed numerically at the level of $10^{-12}$.
 
-Given these definitions, the multivariate randon effect is given by~\eqref{eq: Overall notation structure}, which is a reduced-rank approximation that seen in factor analytic models \citep{Niku2017}. This approach makes it possible to fit large multivariate random effects, because the number of parameters required in the variance-covariance matrix is now reduced to linearity with $Q$.
-\fi
+Our first interpretation of $\mathrm{GLF}\approx0.68$ was that roughly two thirds of the available factor capacity was being spent on a direction carrying no information, and that removing it would improve the estimate. We tested this by replacing the M-step eigen-decomposition with the corresponding deflated one, that is, by taking the leading $K$ eigen-pairs of $\bm{\Pi}\mathbf{S}\bm{\Pi}$ and using the $Q-1-K$ denominator above. The result contradicted the interpretation: across the configurations we examined, GLF fell from $0.68$ to $0.00$ while every identified quantity was essentially unchanged ($\hat\sigma^2$ differed by $1.2\times10^{-6}$, the subspace distance by $1\times10^{-6}$). The component of $\hat{\mathbf{B}}$ along $\mathbf{1}$ is therefore not a parasitic factor competing with the genuine ones; it is simply a different representative of the same equivalence class, and the estimator drifts within the class without any feedback onto the identified part.
 
-Generalized latent factor model also suffers form indeterminacy, which is the primary source of non-identification in factor analysis \citep{BAI2012, BAI2013}. Thus, we set upper triangular elements of $\mathbf{B}$ to be zero to assist with parameter identifiability, without loss of generality. 
-
-\iffalse
-We use \eqref{eq: Overall notation structure} for inference and \eqref{eq: Detailed notation structure} for interpretation. 
-\fi
-
-\iffalse
-The factor structure \eqref{eq: Detailed notation structure} is subject to classical indeterminacy, which includes both rotational and sign indeterminacy. For any $K\times K$ orthogonal matrix $\mathbf{V}$, the substitution $(\mathbf{B},\mathbf{f}_{j})\to (\mathbf{BV},\mathbf{V}^{\top}\mathbf{f}_{j})$ leaves the distribution of $\bm{\lambda}_{j}$ unchanged. Also, the substitution $(\mathbf{b}_{k},\mathbf{f}_{j})\to (-\mathbf{b}_{k},-\mathbf{f}_{j})$ product of $\mathbf{b}_{q}\mathbf{f}_{k}$ is the same as $(-\mathbf{b}_{q})(-\mathbf{f}_{k})$. 
-
-A more common approach in applications to ensure identifiability is to prescribe zeros in the loading matrix $\mathbf{B}$. Under our orthogonal assumption, the additional $K(K-1)/2$ constrains are imposed by fixing $K(K-1)/2$ entries to be zeros. Interestingly, the Example~\eqref{eg:no-rotational} shows that not all configurations of the $K(K-1)/2$ zeros ensure identifiability.
-
-\begin{example}
-    This example was given by~\citet{Cui2026}. We set $K=3$ and assign at least 3 zeros in loading matrix $\mathbf{B}$. Consider the loading matrix $\mathbf{B}$ and the orthogonal transformation matrix $\mathbf{G}$,
-    \begin{equation*}
-        \mathbf{B}_{[1:2,]}=
-        \begin{pmatrix}
-            0 & a_{12} & a_{13} \\
-            a_{21} & 0 & 0 
-        \end{pmatrix}, \quad \mathbf{G}_{\theta}=
-        \begin{pmatrix}
-            1 & 0 & 0 \\
-            0 & \cos \theta & \sin \theta \\
-            0 & -\sin \theta & \cos \theta
-        \end{pmatrix}.
-    \end{equation*}
-    For any $\theta$, 
-    \begin{equation*}
-        [\mathbf{B}\mathbf{G}_{\theta}]_{[1:2,]}
-        =
-        \begin{pmatrix}
-            0 & *_{12} & *_{13} \\
-            a_{21} & 0 & 0 
-        \end{pmatrix}.
-    \end{equation*}
-    
-    For any $\theta$, the zero pattern of $[\mathbf{B}\mathbf{G}_{\theta}]_{[1:2,]}$ retains the same as $\mathbf{B}_{[1:2,]}$. Thus, the above transformation matrix $\mathbf{G}_{\theta}$ leaves the factor covariance matrix unchanged, which is not rotationally identifiable under this constraint. 
-    \label{eg:no-rotational}
-\end{example}
-
-Example~\eqref{eg:no-rotational} shows that a necessary condition for identifiability is that no two columns of the loading matrix share the same zero pattern. To avoid these cases, we consider the following sufficient condition that covers many commonly used identifiability constraints. Thus, we give the positive lower triangular constraint to recover the true value of matrix $\mathbf{B}$, 
-
+This is not an accident of the configurations we tried. Decomposing $\bm{\lambda}=\mathbf{z}+t\mathbf{u}$ with $\mathbf{z}\perp\mathbf{u}$, the group likelihood depends on $\mathbf{z}$ only, and profiling the Gaussian penalty over $t$ gives
 \begin{equation}
-    b_{qk}=0 \text{ for } q<k,\quad b_{kk}>0 \text{ for }k=1,2,\dots ,K,
-    \label{eq: PLT}
+\min_t\,(\mathbf{z}+t\mathbf{u})^\top\bm{\Sigma}^{-1}(\mathbf{z}+t\mathbf{u})=\mathbf{z}^\top\bm{\Sigma}_\perp^{-1}\mathbf{z},
+\label{eq:profile-identity}
 \end{equation}
-which solves the rotationally indeterminacy and sign indeterminacy. \citet{Cui2026} had proved many sufficient constraints, and we adapt their IC$^{(2)}$ with orthogonal latent variables in factor analysis.
+so the profiled objective for $\mathbf{z}$ involves $\bm{\Sigma}$ only through its identified part $\bm{\Sigma}_\perp$. The same identity applied in the basis $(\mathbf{u},\mathbf{1}^\perp)$, in which $\mathbf{F}_j$ has a vanishing first row and column by Equation~\eqref{eq:F-singular}, gives
+\begin{equation}
+\Big[(\mathbf{F}_j+\bm{\Sigma}^{-1})^{-1}\Big]_{\perp\perp}=(\mathbf{F}_{j,\perp}+\bm{\Sigma}_\perp^{-1})^{-1},
+\label{eq:posterior-identity}
+\end{equation}
+so the identified part of the posterior covariance is likewise a function of $\bm{\Sigma}_\perp$ alone. Consequently $\bm{\Pi}\mathbf{S}\bm{\Pi}$ is invariant to the gauge, the deflated EM iteration is exactly gauge-equivariant, and its entire trajectory is a function of the identified parameter only. We verified this numerically by comparing gauge-equivalent parameter values differing by $\mathbf{B}\mapsto\mathbf{B}+\mathbf{1}\mathbf{a}^\top$ with $\lVert\mathbf{a}\rVert$ up to $12.6$: although the two covariance matrices differed by $2.2\times10^2$ in maximum absolute entry, the projected quantities $\bm{\Pi}\hat{\bm{\lambda}}_j$, $\bm{\Pi}\hat{\mathbf{S}}_j\bm{\Pi}$ and $\bm{\Pi}\mathbf{S}\bm{\Pi}$ agreed to $10^{-9}$, a level set by the gradient tolerance of the inner Newton solver rather than by the algebra.
+
+Although the drift leaves the identified estimate untouched, it does not leave our assessment of that estimate untouched. Loading criteria that compare $\hat{\mathbf{B}}$ with $\mathbf{B}^\ast$ directly in $\mathbb{R}^Q$ (subspace distance, maximum principal angle, Tucker congruence, the RV coefficient, loading RMSE, and the relative error of $\bm{\Sigma}$) all penalize a mismatch in a direction that no estimator can recover, and the size of this penalty depends on GLF, so it differs systematically between families of methods: the criterion does not merely shift every method by the same amount, it reorders them. The remedy is to evaluate all criteria in the identified quotient, replacing $\hat{\mathbf{B}}$ and $\mathbf{B}^\ast$ by $\bm{\Pi}\hat{\mathbf{B}}$ and $\bm{\Pi}\mathbf{B}^\ast$ before computing any of them; this changes only the evaluation, not the fitted values. Doing so reduced the subspace distance of the anisotropic-prior methods by roughly $70\%$ (for example, from $1.1507$ to $0.3713$ at $J=50,\,Q=50$), left the isotropic-prior methods essentially unchanged, and improved the reference software by an intermediate amount consistent with its intermediate GLF; the ordering we had previously reported, in which the isotropic-prior methods appeared to dominate, does not survive the correction. We regard the earlier ordering as an artifact of the criterion rather than a finding.
+
+Equations~\eqref{eq:profile-identity} and \eqref{eq:posterior-identity} establish that the estimation problem is well posed in the quotient, and they justify the deflated M-step as a free operation that changes the representative without changing any identified quantity. They explain why our evaluation criteria had to be projected, and they separate a gauge effect from a genuine estimation error, which had previously been confounded in our diagnosis of the loading error. They do \emph{not} reduce the estimation error itself: the remaining gap between our estimates and the oracle (for example $0.3713$ against $0.2799$ at $J=50,\,Q=50$) is unaffected by the gauge and has a different source.
 \fi
 
+\iffalse
+\subsubsection{A Direction for Future Work}
+\label{subsubsec:direction-future-work}
+
+The constraint in Equation~\eqref{eq:gauge-constraint} resolves the indeterminacy by convention rather than by information, and it is natural to ask whether the missing direction could instead be identified by bringing in data that we currently discard. Our likelihood is conditional on the row totals $y_{ij\cdot}$, so the totals themselves never enter it, and the all-ones direction is precisely the direction of overall level. A joint model that specifies a distribution for $y_{ij\cdot}$ with its own group-level effect, together with the conditional multinomial for $\bm{y}_{ij}$ given $y_{ij\cdot}$, would make that effect estimable and correspond to reinstating the all-ones column as a genuine $(K{+}1)$-th factor whose scores are identified by the totals. This would also allow the volume and composition components to be modeled jointly and their dependence examined, which is of substantive interest in the ecological application. We note that this is a model extension requiring a new identifiability analysis, not a reparameterization.
+\fi
 
 \section{Literature Review}
 \label{sec:literature-review}
 
-Multinomial settings share a common structure with $I$ observations in $J$ groups, whose individual observation is a count vector $\bm{y}_{ij} \in \mathbb{Z}^Q_{\geq 0}$ over $Q$ categories. However, the inference of original Multinomial models is challenging due to the log-linear softmax link and the group random effects. The softmax link is coupling while it requires updating through all $Q$ categories, in the meanwhile, the hierarchical aspect ignoring group structure inflates Type~I error and introduces confounding bias in fixed-effect estimates \citep{Lee2019}. The literature has addressed these two dimensions largely in isolation. 
+Multinomial settings share a common structure: $I$ observations in $J$ groups, each observation a count vector $\mathbf{y}_{ij}\in\mathbb{Z}_{\geq0}^Q$ over $Q$ categories. Inference for such models is challenging for two reasons: the log-linear softmax link couples all $Q$ categories together, and ignoring group structure inflates Type~I error and introduces confounding bias in the fixed-effect estimates \citep{Lee2019}. The literature has largely addressed these two problems in isolation.
 
-The simplest approach treats observations as exchangeable and attributes all variation to measured covariates by Multinomial logistic regression. However, the maximum likelihood is computationally prohibitive owing to the coupled softmax normalizer with large number of categories. \citet{Baker1994} established the Poisson-Multinomial Equivalence (PME). That is, conditional on the total count, the Multinomial likelihood (up to a constant) can be surrogate by the product of $Q$ independent Poisson log-linear models with a common additive offset. \citet{Taddy2015} exploited this to propose Distributed Multinomial Regression (DMR) and applied it to large-vocabulary document classification. \citet{Lee2017} subsequently formalized and extended the PME framework clarifying conditions under which it applies to a broad class of Multinomial regression models.
- 
-Standard Multinomial logistic regression and distributed Multinomial regression remain important baselines, but their central limitation is the absence of group-level random effects. When groups differ systematically, treating observations as exchangeable absorbs unmodeled group variation into fixed-effect estimates. For the high-dimensional fixed effects, \citet{Correia2020} provides efficient Poisson estimation algorithms. Our work builds on this computational tradition while additionally modeling group-level structure.
+The simplest approach treats observations as exchangeable and attributes all variation to measured covariates via multinomial logistic regression. Maximum likelihood is then computationally prohibitive when the number of categories is large, owing to the coupled softmax normalizer. \citet{Baker1994} established the Poisson--Multinomial equivalence (PME): conditional on the total count, the multinomial likelihood is, up to a constant, exactly equal to the product of $Q$ independent Poisson log-linear likelihoods sharing a common additive offset. \citet{Taddy2015} exploited this to propose Distributed Multinomial Regression (DMR) and applied it to large-vocabulary document classification. \citet{Lee2017} subsequently formalized and extended the PME framework, clarifying the conditions under which it applies to a broad class of multinomial regression models.
 
-gllvm: fast analysis of multivariate.. 
- 
-With the improvement of science and technology, various fields, for example, psychology, economics and genetics, require statistical tool to analyze large-scale data, not only with huge sample size, but also with more variates (categories). Poisson Lognormal (PLN) was introduced by \citet{Aitchison1989}, placing a Gaussian prior $\bm{Z}_i \sim \mathcal{N}(\bm{\mu}, \bm{\Sigma})$ on the log-linear predictors and drawing $Y_{ijq} \mid Z_{ijq} \sim \mathrm{Poisson}\bigl(\exp(Z_{iq})\bigr)$ independently. PLN captures between-category correlations and over-dispersion. However, they can not estimate the covariance $\bm{\Sigma}$ directly when $Q$ is larger than expected. \citet{Chiquet2018} addressed this using PLN-PCA, which constraining $\bm{\Sigma} = \mathbf{CC}^\top$ with $\mathbf{C}\in\mathbb{R}^{Q\times K}$ and $K\ll Q$, then used variational EM with a mean-field Gaussian approximation. The key limitations are that PLN-PCA operates at the observation level only, with no group random effect and idiosyncratic covariance matrix. \citet{Tu2023} introduced logistic-normal multinomial (LNM) factor analysis with a factor-structured observation-level covariance $\bm{\Sigma} = \mathbf{BB}^{\top} + \bm{\Psi}$, $\bm{\Psi} = \mathrm{diag}(\psi_1,\ldots,\psi_Q)$. The EM algorithm uses a variational Gaussian approximation in the E-step and the Rubin-Thayer iterations \citep{Rubin1982} in the M-step. Their LNM-FA shares the factor-analytic motivation of the present work, which motivated our work targeting to structure a group-level random effect $\bm{\lambda}_j = \mathbf{B}\mathbf{f}_j + \bm{\epsilon}_j$ and adopting the spherical simplification $\mathbf{D} = \sigma^2\mathbf{I}_Q$. In parallel, \citet{mcgillycuddy2024} implemented a reduced-rank parameterization of large multivariate random effects within the general glmmTMB framework. Their work showed that factor-structured random effects are practically useful for grouped count data, not just a theoretical construct. However, their approach still operates at the observation level. It lacks the group-level hierarchical structure that is central to our work.
+Standard multinomial logistic regression and DMR remain important baselines, but their central limitation is the absence of group-level random effects: when groups differ systematically, treating observations as exchangeable absorbs unmodelled group variation into the fixed-effect estimates. For high-dimensional fixed effects, \citet{Correia2020} provides efficient Poisson estimation algorithms; our work builds on this computational tradition while additionally modelling group-level structure.
 
-\citet{Cui2026} studied a purely bi-linear factor structure without idiosyncratic-noise. They treated the factors $\mathbf{f}$ as fixed parameters and estimating them by joint likelihood method. Their asymptotic theory establishes a scaling condition under which factor-loading estimates are asymptotically normal, requiring both dimensions to diverge jointly. They discussed about the drawbacks of marginal maximum likelihood estimation, including the prior distribution for latent variables, integrals computational challenge and critical theoretical analysis of the marginal estimator. Motivated by their work, we define an exact example of the grouped Multinomial data, then use the marginal maximum likelihood estimation under the framework of PME as the extension of their work.
+As the number of categories $Q$ and the sample size have grown across applications in psychology, economics, and genetics, several lines of work have targeted models for high-dimensional multivariate count data.
+% REVISION NOTE: replaced the stray, uncompiled line "gllvm: fast analysis of multivariate.." with the sentence above. This line was not wrapped in a \citep and would otherwise appear verbatim in the compiled PDF; it looks like the start of a citation to the gllvm software package (Niku et al.) that never got turned into a \citep. Please add the correct \citep here if that is what was intended, along with any other gllvm-specific point you meant to make -- I did not attempt to reconstruct it, since I do not know what the surrounding sentence was going to say.
+Poisson Lognormal (PLN) models were introduced by \citet{Aitchison1989}, placing a Gaussian prior $\mathbf{Z}_i\sim\mathcal{N}(\bm\mu,\bm\Sigma)$ on the log-linear predictors and drawing $Y_{ijq}\mid Z_{ijq}\sim\operatorname{Poisson}(\exp(Z_{iq}))$ independently. PLN captures between-category correlation and overdispersion, but cannot estimate $\bm\Sigma$ directly once $Q$ is large. \citet{Chiquet2018} addressed this with PLN-PCA, constraining $\bm\Sigma=\mathbf{C}\mathbf{C}^\top$ with $\mathbf{C}\in\mathbb{R}^{Q\times K}$, $K\ll Q$, and fitting it with a variational EM algorithm using a mean-field Gaussian approximation. The key limitation of PLN-PCA is that it operates at the observation level only, with no group random effect and no idiosyncratic covariance term. \citet{Tu2023} introduced logistic-normal multinomial (LNM) factor analysis, with a factor-structured observation-level covariance $\bm\Sigma=\mathbf{B}\mathbf{B}^\top+\bm\Psi$, $\bm\Psi=\operatorname{diag}(\psi_1,\dots,\psi_Q)$; their EM algorithm uses a variational Gaussian approximation in the E-step and Rubin--Thayer iterations \citep{Rubin1982} in the M-step. LNM-FA shares the factor-analytic motivation of the present work, and motivated our own choice to structure a group-level random effect $\bm\lambda_j=\mathbf{B}\mathbf{f}_j+\bm\epsilon_j$ with the spherical simplification $\mathbf{D}=\sigma^2\mathbf{I}_Q$. In parallel, \citet{mcgillycuddy2024} implemented a reduced-rank parametrization of large multivariate random effects within the general \texttt{glmmTMB} framework, showing that factor-structured random effects are practically useful for grouped count data and not merely a theoretical construct; their approach, however, still operates at the observation level and lacks the group-level hierarchical structure that is central to our work.
 
-\iffalse
-Relative to PLN-PCA, we add a group-level hierarchical structure, a spherical idiosyncratic term, and Laplace inference. Relative to LNM-FA, the principal advances are the group-level factor structure and the large-$Q$ consistency theory. Relative to DMR, we add group-level random effects with a factor prior, thus DMR can be recovered as the special case when $J = 1$.
-\fi
+\citet{Cui2026} study a purely bilinear factor structure with no idiosyncratic noise, treating the factors $\mathbf{f}$ as fixed parameters and estimating them by joint likelihood. Their asymptotic theory establishes a scaling condition under which the factor-loading estimates are asymptotically normal, requiring both dimensions to diverge jointly. They also discuss the drawbacks of marginal maximum likelihood estimation for this class of models: the need for a prior distribution on the latent variables, the computational cost of the resulting integrals, and open theoretical questions about the marginal estimator. Motivated by their work, we specify an exact grouped-multinomial model and use marginal maximum likelihood under the PME framework, as an extension of their setting.
 
+Relative to PLN-PCA, we add a group-level hierarchical structure, a spherical idiosyncratic term, and Laplace inference. Relative to LNM-FA, our principal advances are the group-level factor structure and the large-$Q$ consistency theory. Relative to DMR, we add group-level random effects with a factor prior.
+% REVISION NOTE (please confirm): I removed the clause "thus DMR can be recovered as the special case when J=1". Setting J=1 leaves a single group with lambda_1 still drawn from N(0,Sigma); it does not remove the group random effect, so it does not reduce the model to DMR. The natural special case that does recover DMR is Sigma -> 0 (equivalently B=0, sigma^2=0), which forces lambda_j = 0 for every j. If you intended a different point by "J=1", please let me know and I will restate it correctly rather than silently dropping it.
 
+The proposition that the choice of identifiability constraint affects estimation performance has precedent in the literature. In generalized bilinear models, sum-to-zero constraints on the log-dispersions are reported to degrade estimation accuracy, because a few poorly estimated low values propagate through the sum into the remaining parameters. Our conclusion runs in the opposite direction, but the two are not in conflict: in that setting the dispersion parameters are mutually unconstrained, so a sum-to-zero constraint spreads the estimation noise of individual parameters across all of them, whereas in our setting the parameters are tied by an isotropic-uniqueness structure whose meaning is preserved only under isometric coordinates, so a non-isometric baseline-category constraint alters the model itself. Whether a given constraint helps or harms is thus a property of the model structure rather than of the constraint, made concrete in our case by the eigenvalue comparison in Section~\ref{subsec:model-setup}. Related results for generalized latent factor models show that the asymptotic covariance of the loading estimates depends on which identifiability condition is imposed, and that the naive plug-in approach commonly used in practice understates the variance and yields coverage well below the nominal level. This points in the same direction as our finding: the choice of gauge is not a purely notational convention, and has substantive consequences whenever structure is imposed or inference is required.
 
-\iffalse
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.48\textwidth]{figs/data_structure.drawio.pdf}
-    \caption{Data Structure: Orthogonal case that each latent factors $f1$–$f3$ is independent to others. Each directed edge represents that a latent factor affects the response variable $\bm{y}_{ij}$ for $j\in\{1,2\}$. Notice that each latent factor affects all groups publicly.}
-    \label{fig:data_structure}
-\end{figure}
-\fi
-
-
-
-\iffalse
 \section{EM Algorithm \& Relatives}
 \label{sec: em-algorithm-relatives}
 
-In order to have a good understanding for further discussion, we briefly review the classical EM algorithm in this section. Then we discuss the models that have the similar structure with our model. 
+To support the discussion that follows, we briefly review the classical EM algorithm in this section, and then discuss models with a similar structure to ours.
 
-Let $Y$ and $Z$ be random variables taking values in the sample spaces $\mathcal{Y}$ and $\mathcal{Z}$, respectively. Suppose that the pair $(Y,Z)$ has a joint density function $f_{\theta^{*}}$ that belongs to some parameterized family $\{f_{\theta}\mid \theta\in \Omega
-\}$, for a non-empty compact convex set $\Omega$. Rather than observing complete data $(Y,Z)$, we observe only component $Y$.Thus, the component $Z$ corresponds to the missing or latent structure in the data. Our goal is to obtain an estimate of the unknown parameter $\theta^{*}$ via maximum likelihood to compute some $\hat{\theta}\in\Omega$ maximizing the function $\theta\mapsto g_{\theta}(y)$, where
+Let $Y$ and $Z$ be random variables taking values in sample spaces $\mathcal{Y}$ and $\mathcal{Z}$ respectively. Suppose the pair $(Y,Z)$ has a joint density $f_{\theta^\ast}$ belonging to a parametrized family $\{f_\theta\mid\theta\in\Omega\}$, for a non-empty compact convex set $\Omega$. Rather than observing the complete data $(Y,Z)$, we observe only $Y$; the component $Z$ corresponds to the missing or latent structure in the data. Our goal is to estimate the unknown parameter $\theta^\ast$ by maximum likelihood, that is, to compute $\hat\theta\in\Omega$ maximizing $\theta\mapsto g_\theta(y)$, where
+\begin{equation}
+g_\theta(y)=\int_{\mathcal{Z}}f_\theta(y,z)\,dz
+\label{eq:classical-em-integral}
+\end{equation}
+is the density of the observed variable $Y$.
 
+In many settings, the log-likelihood $\log f_\theta(y,z)$ of the complete data is easier and cheaper to compute than the log-likelihood of the observed data alone. The EM algorithm is well suited to such settings. For each $\theta\in\Omega$, let $k_\theta(z\mid y)$ denote the conditional density of $z$ given $y$. The log-likelihood at $\theta'\in\Omega$ can then be lower bounded, using Jensen's inequality, by
 \begin{equation}
-    g_{\theta}(y)=\int_{\mathcal{Z}}f_{\theta}(y,z)\,dz
-    \label{eq:classical-em-integral}
+\log g_{\theta'}(y)\;\ge\;\underbrace{\int_{\mathcal{Z}}k_\theta(z\mid y)\log f_{\theta'}(y,z)\,dz}_{Q(\theta'\mid\theta)}\;-\;\int_{\mathcal{Z}}k_\theta(z\mid y)\log k_\theta(z\mid y)\,dz,
+\label{eq:classical-em-jensen}
 \end{equation}
-is the density function of the observed variable $Y$.
-
-In many settings, computing log likelihood $\log f_{\theta}(y,z)$ of both latent variables and observed data is easier and computationally cheaper than evaluating the log likelihood of the observed data itself. The EM algorithm is well-suited to such settings. For each $\theta\in\Omega$, let $k_{\theta}(z\mid y)$ denote the conditional density of $z$ given by $y$, then the log likelihood at $\theta^{'}\in\Omega$ can be lower bounded using Jensen's inequality
+with equality when $\theta=\theta'$. This gives a family of lower bounds on the log-likelihood, denoted $Q(\cdot\mid\cdot)$. The M-step maximizes this lower bound,
 \begin{equation}
-    \log g_{\theta'}(y) \;\ge\; \underbrace{\int_{\mathcal{Z}} k_\theta(z \mid y) \log f_{\theta'}(y,z)\, dz}_{Q(\theta' \mid \theta)} \;-\; \int_{\mathcal{Z}} k_\theta(z \mid y) \log k_\theta(z \mid y)\, dz,
-    \label{eq:classical-em-jensen}
+\theta^{(t+1)}=\arg\max_{\theta'\in\Omega}Q(\theta'\mid\theta^{(t)}),
+\label{eq:em-m-step}
 \end{equation}
-the equality holds when $\theta=\theta^{'}$. Thus, we have a family of lower bounds on the log likelihood, denoted by $Q(\cdot\mid \cdot)$. We maximize this lower bound in M-step
-\begin{equation}
-    \theta^{(t+1)}=\arg\max_{\theta^{'}\in\Omega}Q(\theta^{'}\mid \theta^{(t)}),
-    \label{eq:em-m-step}
-\end{equation}
-and then re-evaluates the lower bound at the new parameter value in E-step.
-\fi
+and the E-step then re-evaluates the lower bound at the new parameter value.
