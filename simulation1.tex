@@ -30,7 +30,9 @@ denote the orthogonal projector onto $\mathrm{col}(\mathbf{B})$. We define the s
 \[
 d(\hat{\mathbf{B}}, \mathbf{B}^{*}) = \left\| \mathbf{P}_{\mathbf{B}} - \mathbf{P}_{\mathbf{B}^{*}}\right\|_F.
 \]
-This quantity is rotation-invariant and lies in $[0, \sqrt{2K}]$, with $0$ attained only when the two column spaces coincide. All references to \texttt{B\_dist} in the code correspond to this quantity.
+This quantity is rotation-invariant and lies in $[0, \sqrt{2K}]$, with $0$ attained only when the two column spaces coincide. All references to \texttt{B\_dist} in the code correspond to this quantity. 
+
+We introduce the correlation for two matrices as other criterion. 
 
 Since $\sigma^2$ is a scalar, we report the signed relative error
 \[
@@ -74,7 +76,7 @@ Three regimes recur throughout this chapter and are worth naming in advance.
 Our EM implementation originally stopped when the relative change in the marginal log-likelihood fell below a tolerance,
 
 \begin{equation}
-    \left| \frac{\ell(\hat{\bm{\theta}}_{n}) - \ell(\hat{\bm{\theta}}_{n-1})}{\ell(\hat{\bm{\theta}}_{n-1})} \right| < \mathrm{tol}.
+    \left| {\ell(\hat{\bm{\theta}}_{n}) - \ell(\hat{\bm{\theta}}_{n-1})} \right| < \mathrm{tol}.
 \end{equation}
 
 We found this criterion unreliable in the region of parameter space near the Heywood boundary, where $\sigma^2$ is small relative to the scale of $\mathbf{BB}^\top$. In a representative cell ($Q=400$, $J=10$), the likelihood-based criterion declared convergence at iteration 10, with $\hat\sigma_{10}^2 = 0.4463$. Running the same EM sequence to iteration 60 without stopping showed $\hat\sigma_{n}^2$ still declining until reaching $\hat\sigma_{60}^2=0.4051$. It's a further $9.2\%$ relative change after the criterion had already triggered. This is a known phenomenon in EM algorithms with high fractions of missing information. The log-likelihood surface can be extremely flat in a direction along which the parameter itself is still moving substantially. A likelihood-only stopping rule cannot detect this, since it only observes the flat direction.
@@ -96,13 +98,13 @@ The Woodbury-accelerated E-step relies on a surrogate curvature derived from PME
 \subsection{Design \& Fundings}
 
 In Chapter~\ref{cha:methodology}, we discuss the approximation of $\hat{\mathbf{S}}_{j}$ and its surrogate $\hat{\mathbf{S}}^{P}_{j}$ using PME. As shown in~\ref{prop:diff-s}, the exact curvature $\mathbf{H}_j(\boldsymbol\lambda)$ decomposes as $\mathbf{H}^P(\boldsymbol\lambda)$ plus a correction term involving only group $j$'s own data, $\{y_{ij}, \mathbf{p}_{ij}\}_{i \in \mathcal{I}_j}$. Since $\hat{\mathbf{S}}_j = \left(-\mathbf{H}_j(\hat{\boldsymbol\lambda}_j)\right)^{-1}$ and $\hat{\mathbf{S}}^P_j = \left(-\mathbf{H}^P(\hat{\boldsymbol\lambda}_j)\right)^{-1}$ are both obtained by inverting this per-group quantity at a fixed evaluation point $\hat{\boldsymbol\lambda}_j$, the discrepancy between them is itself a per-group object: it does not depend on $J$, the total number of groups, provided $\hat{\boldsymbol\lambda}_j$ is treated as given rather than re-estimated from the full $J$-group data. This is exactly the setting of our single-round design below, where each EM update starts from a fixed, externally chosen $\boldsymbol\lambda_j$ rather than one obtained by jointly fitting all $J$ groups; the conclusion does not extend, without further argument, to $\hat{\mathbf{S}}_j$ evaluated at the fully iterated EM's global estimate. This has two consequences for our design. First, it justifies holding $J$ fixed at a small value while varying $(Q, \sigma^2_{\mathrm{prior}})$ in this experiment, since the discrepancy under study is already determined at the single-group level. Second, we restrict each comparison to a single EM update, rather than iterating to convergence, so that the curvature discrepancy is isolated from the cross-round E/M feedback discussed in Chapter~\ref{ch:heywood}. We run one EM update from a fixed starting point under both branches and record the resulting parameter value. We repeat this for a range of $\sigma^2_{\mathrm{prior}}$ values away from and at the true generating value. We separately repeat the comparison as a function of $J$ at fixed $Q$, to empirically confirm the prediction of~\ref{prop:diff-s} that the TRUE-FALSE gap does not shrink as the amount of group-level data grows. [TODO: state the exact $(Q, J, \sigma^2_{\mathrm{prior}})$ grid used in the final run.]
-\iffalse
-\begin{table}[htbp]
-\centering
-% \input{tables/exact_shat_gap_by_Q.tex}
-\caption{Gap between exact-curvature and surrogate-curvature single-round updates, as a function of $Q$ and $\sigma^2_{\mathrm{prior}}$.}
-\label{tab:exact-shat-gap-Q}
-\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figs/Q_rate_compare.pdf}
+    \caption{Rate Calculation for Curvature: Compare for Different Q.}
+    \label{fig:Qrate_compare}
+\end{figure}
 
 The gap between the two branches grows with $\sigma^2_{\mathrm{prior}}$ and shrinks sharply with $Q$; at [XX] the gap is on the order of [YY\%], and by $Q = [ZZ]$ it is close to numerically negligible. This is consistent with the PME approximation improving as $Q$ grows, since the Poisson-conditioning argument underlying PME becomes tighter in that regime. At the reference point where $\sigma^2_{\mathrm{prior}}$ is set to the true generating value, the exact-curvature branch recovers only a small fraction of the single-round discrepancy between the surrogate estimate and the truth; this indicates that the surrogate curvature is not the dominant source of that discrepancy, and that whatever is driving it lies elsewhere in the estimation procedure, not in the PME approximation itself. [TODO: insert final recovered-fraction numbers once the multi-seed rerun is in.] The $J$-sweep comparison shows the two branches tracking each other closely across the full range tested, with no evidence that the gap reopens as $J$ grows.
 
@@ -116,65 +118,6 @@ Based on these results we treat \texttt{exact\_Shat = FALSE} as the default sett
 \section{Self-Recovery on Simulated Data}
 \label{sec:sim-recovery}
 
-\subsection{Design \& Fundings}
-
-For each cell of a $(Q, J, N)$ grid we generate $R$ independent datasets from the model of Section~\ref{sec:sim-data}, fit the Woodbury-accelerated estimator to each, and compute the metrics of Section~\ref{sec:sim-metrics} against the known generating truth. Every run follows the dual convergence protocol of Section~\ref{sec:sim-convergence}. [TODO: state final $(Q,J,N,R)$ grid.]
-
-\begin{table}[htbp]
-\centering
-% \input{tables/self_recovery_phi_mu.tex}
-\caption{Bias and MSE of $\hat\phi$ and $\hat\mu$, reported separately for zero and nonzero coefficients, across the simulation grid.}
-\label{tab:recovery-phi-mu}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-% \input{tables/self_recovery_sigma2.tex}
-\caption{Relative error of $\hat\sigma^2$, with Monte Carlo standard errors, across the simulation grid.}
-\label{tab:recovery-sigma2}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-% \input{tables/self_recovery_B.tex}
-\caption{Subspace distance $d(\hat B, B^\ast)$, with Monte Carlo standard errors, across the simulation grid.}
-\label{tab:recovery-B}
-\end{table}
-
-Recovery of $\phi$ is [accurate/biased] for nonzero coefficients across the grid, with the expected lasso shrinkage bias toward zero; recovery of the zero coefficients shows [TODO: describe selection behavior once the table is in]. The relative error of $\hat\sigma^2$ is systematically negative across most of the grid, consistent with the shrinkage pathology documented in Chapter~\ref{ch:heywood}; we do not attempt to correct for this here, and refer the reader to that chapter for the mechanism and candidate fixes. The magnitude of this negative bias is largest when $J$ is small relative to $Q$ and shrinks as $J$ grows, consistent with the classical degrees-of-freedom story for variance-component estimation. Subspace recovery of $B$ improves with $J$ at every $Q$ tested, though we note in Chapter~\ref{ch:asymptotics} that this improvement is not always monotone over the full EM trajectory, and the numbers reported here reflect estimates at the converged iteration count under the protocol of Section~\ref{sec:sim-convergence}, not at an arbitrary early stopping point.
-
-\subsection{Known Limitation}
-\label{sec:heywood-limitation}
-
-As noted above, $\hat\sigma^2$ is biased downward in the regime where $\sigma^2$ is small relative to the scale of $BB^\top$, a pathology we refer to throughout this thesis as the Heywood case. This is a genuine limitation of the current estimator and is treated as a separate problem in Chapter~\ref{ch:heywood}, rather than as a defect specific to the Woodbury acceleration; the same pathology is present, to varying degrees, in every package compared against in Section~\ref{sec:sim-comparison} below.
-
-
-\section{Comparison Against Existing Packages}
-\label{sec:sim-comparison}
-
-\subsection{Design \& Fundings}
-
-We fit the same simulated datasets under three existing packages, chosen to isolate different components of the FA-DMR model. \texttt{glmnet} provides a lasso-penalized comparison for $\hat\phi$ alone, with no random-effect structure. \texttt{glmmTMB} provides a comparison for the random-effect variance component under a standard GLMM, without the factor-analytic structure on $\alpha_j$. \texttt{gllvm} provides the closest comparison overall, since it fits the same generalized-linear-latent-variable family under a Laplace approximation option, and is therefore treated as the primary benchmark rather than a secondary check. For each package we record both estimation accuracy, using the metrics of Section~\ref{sec:sim-metrics} restricted to the components that package estimates, and wall-clock runtime.
-
-\begin{table}[htbp]
-\centering
-% \input{tables/package_comparison_accuracy.tex}
-\caption{Estimation accuracy of the Woodbury estimator against glmnet, glmmTMB, and gllvm, restricted to the parameter components each package estimates.}
-\label{tab:comparison-accuracy}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-% \input{tables/package_comparison_runtime.tex}
-\caption{Wall-clock runtime comparison across packages, at matched $(Q,J,N)$.}
-\label{tab:comparison-runtime}
-\end{table}
-
-The Woodbury estimator matches \texttt{glmnet} and \texttt{glmmTMB} on the components those packages estimate, while running substantially faster, consistent with the acceleration results of Chapter~\ref{ch:woodbury}. Against \texttt{gllvm}, the fairer comparison given the shared model family, the Woodbury estimator is currently [somewhat behind / comparable] on estimation accuracy; [TODO: state final direction and magnitude once the rerun is in, and note whether this gap is concentrated in the Heywood regime or present throughout the grid]. We treat \texttt{gllvm}'s relative accuracy advantage as a target for the refinements discussed in Chapter~\ref{ch:heywood}, rather than as evidence against the Woodbury architecture itself, since the runtime advantage documented here is retained regardless.
-
-\subsection{Discussion}
-
-The comparison is not fully symmetric: \texttt{glmnet} and \texttt{glmmTMB} do not model the factor structure on $\alpha_j$ at all, so their accuracy numbers reflect an easier estimation problem restricted to a subset of parameters, not a head-to-head comparison on the full model. \texttt{gllvm} is the only package tested that estimates a comparable factor-analytic structure, and is therefore the benchmark we weight most heavily in interpreting these results. [TODO: add any covariate-recovery comparison if run.]
-\fi
-
+\subsection{Laplace-EM algorithm obstacles}
+\label{subsec:obstacle-lap-em}
 

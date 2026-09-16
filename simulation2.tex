@@ -1,0 +1,77 @@
+\chapter{Simulation Studies}
+\label{cha:simulation-result}
+
+In this chapter, we lay out numerical results illustrating the computational and statistical efficiency of the algorithm proposed in Chapter~\ref{cha:methodology}. 
+
+\section{Evaluation Metrics}
+\label{sec:sim-metrics}
+The marginal likelihood depends on $\mathbf{B}$ only through $\bm{\Sigma} = \mathbf{BB}^\top + \sigma^2 \mathbf{I}_Q$. This quantity is invariant under $\mathbf{B} \mapsto \mathbf{BQ}$ for any orthogonal $\mathbf{Q} \in O(K)$. The PLT-constraint fixes a unique representative $\mathbf{B}^{*}$ for the data-generating parameter, but this constraint is not enforced during estimation. Consequently $\hat{\mathbf{B}}$ can converge to a different rotation of the same column space as $\mathbf{B}^{*}$, and a direct entry-wise comparison of $\hat{\mathbf{B}}$ to $\mathbf{B}^{*}$ is not meaningful. We instead compare column spaces. Let $\mathbf{P}_{\mathbf{B}} = \mathbf{B}(\mathbf{B}^\top \mathbf{B})^{-1}\mathbf{B}^\top$ denote the orthogonal projector onto $\mathrm{col}(\mathbf{B})$. We define the subspace distance $d(\hat{\mathbf{B}}, \mathbf{B}^{*}) = \left\| \mathbf{P}_{\mathbf{B}} - \mathbf{P}_{\mathbf{B}^{*}}\right\|_F.$ This quantity is rotation-invariant and lies in $[0, \sqrt{2K}]$, with $0$ attained only when the two column spaces coincide. It is related to the principal angles $\theta_1,\dots,\theta_K$ between $\mathrm{col}(\hat{\mathbf{B}})$ and $\mathrm{col}(\mathbf{B}^{*})$ by,
+\begin{equation}
+    d(\hat{\mathbf{B}}, \mathbf{B}^{*}) = \sqrt{2}\left(\sum_{k=1}^K \sin^2\theta_k\right)^{1/2},
+    \label{eq:b-dist-defi}
+\end{equation}
+where the $\theta_k$ are obtained from the singular values of $\mathbf{U}_1^\top \mathbf{U}_2$ for orthonormal bases $\mathbf{U}_1, \mathbf{U}_2$ of the two column spaces~\citep{Bjorck1973}. All references to \texttt{B\_dist} in the code correspond to $d(\hat{\mathbf{B}}, \mathbf{B}^{*})$.
+
+The subspace distance treats $\mathrm{col}(\hat{\mathbf{B}})$ as a single object. It does not say whether individual columns of $\hat{\mathbf{B}}$ recover the corresponding columns of $\mathbf{B}^{*}$. To check this object, we first fix the rotation explicitly rather than removing it inside a norm. We solve the orthogonal Procrustes problem,
+\begin{equation}
+    \hat{\mathbf{Q}} = \operatorname*{arg\,min}_{\mathbf{Q}\in O(K)} \left\| \hat{\mathbf{B}}\mathbf{Q} - \mathbf{B}^{*} \right\|_F.
+    \label{eq:ortho-procruste-problem}
+\end{equation}
+If $\hat{\mathbf{B}}^\top \mathbf{B}^{*} = \mathbf{U}\mathbf{D}\mathbf{V}^\top$ is the singular value decomposition, the solution is $\hat{\mathbf{Q}} = \mathbf{U}\mathbf{V}^\top$~\citep{Schonemann1966}. Write $\tilde{\mathbf{B}} = \hat{\mathbf{B}}\hat{\mathbf{Q}}$ for the aligned estimate and let $\tilde{\mathbf{b}}_k$, $\mathbf{b}_k^{*}$ denote the $k$-th columns of $\tilde{\mathbf{B}}$ and $\mathbf{B}^{*}$. For each factor $k = 1,\dots,K$ we define the congruence coefficient
+\begin{equation}
+    \phi_k = \frac{\tilde{\mathbf{b}}_k^\top \mathbf{b}_k^{*}}{\|\tilde{\mathbf{b}}_k\| \, \|\mathbf{b}_k^{*}\|},
+    \label{eq:phi}
+\end{equation}
+the cosine of the angle between the $k$-th aligned column and the $k$-th true column \citep{Tucker1951, Berge1977, Lorenzo2006}. We summarize the $K$ coefficients by the average $\bar\phi = \frac{1}{K}\sum_{k=1}^K |\phi_k|$. Following \citet{Berge1977, Lorenzo2006}, the criterion for $\bar{\phi}$ divided into three levels. $\bar\phi > 0.95$ indicates that the estimated and true loading patterns agree, and $\bar\phi \in [0.85, 0.94]$ indicates fair agreement. $\phi_k$ is a cosine, so it is invariant to a positive rescaling of $\tilde{\mathbf{b}}_k$. It cannot detect a uniform shrinkage of the loadings, for example from prior regularization in the M-step. To capture this we additionally report the root-mean-square error of the aligned loadings,
+\begin{equation}
+    \mathrm{RMSE}(\hat{\mathbf{B}}, \mathbf{B}^{*}) = \left(\frac{1}{QK}\sum_{q=1}^Q\sum_{k=1}^K \left(\tilde{b}_{qk}-b^{*}_{qk}\right)^2\right)^{1/2},
+    \label{eq:rmse}
+\end{equation}
+which is not scale-invariant and so directly penalizes a uniform shrinkage or inflation of $\tilde{\mathbf{B}}$~\citep{MacCallum1999}. Together, $d(\hat{\mathbf{B}}, \mathbf{B}^{*})$, $\bar\phi$, and $\mathrm{RMSE}(\hat{\mathbf{B}}, \mathbf{B}^{*})$ separate three distinct failure modes. The estimated subspace as a whole may be wrong, individual factors may be blended or mis-ordered even when the subspace is right, or the recovered directions may be correct but their magnitude biased.
+
+The three criteria above describe recovery of $\mathbf{B}$ up to rotation, but the likelihood depends only on $\bm{\Sigma}$, which requires no such correction. We therefore also report the relative error of the reconstructed covariance,
+\begin{equation}
+    e(\hat{\bm{\Sigma}}, \bm{\Sigma}^{*}) = \frac{\left\|\hat{\bm{\Sigma}} - \bm{\Sigma}^{*}\right\|_F}{\left\|\bm{\Sigma}^{*}\right\|_F}, \qquad \hat{\bm{\Sigma}} = \hat{\mathbf{B}}\hat{\mathbf{B}}^\top + \hat\sigma^2\mathbf{I}_Q,
+    \label{eq:e-Sigma-error}
+\end{equation}
+computed directly from $\hat{\mathbf{B}}$ and $\hat\sigma^2$, with no alignment step~\citep{Fan2013}. This criterion is most informative when it disagrees with $d(\hat{\mathbf{B}}, \mathbf{B}^{*})$. A large $d(\hat{\mathbf{B}}, \mathbf{B}^{*})$ alongside a small $e(\hat{\bm{\Sigma}}, \bm{\Sigma}^{*})$ indicates that $K$ is likely mis-specified, since an over- or under-parameterized factor structure can still reproduce the marginal covariance well even when the individual factors are not recovered.
+
+Finally, we compare $d(\hat{\mathbf{B}}, \mathbf{B}^{*})$ to its asymptotic value under a spiked-covariance approximation of the estimation problem. Let $\lambda_1 \ge \cdots \ge \lambda_K > 0$ denote the eigenvalues of $\mathbf{B}^{*}(\mathbf{B}^{*})^\top$, treated as $K$ signal spikes above an isotropic noise floor $\sigma^{2*}$, and set $\theta_k = \lambda_k/\sigma^{2*}$. Write $\gamma = Q/J$ for the ratio of the number of taxa to the number of groups used in the de convolution step. As $Q, J \to \infty$ with $Q/J \to \gamma$, the $k$-th principal angle between $\mathrm{col}(\hat{\mathbf{B}})$ and $\mathrm{col}(\mathbf{B}^{*})$ satisfies
+\begin{equation}
+    \sin^2\theta_k \xrightarrow{\mathrm{a.s.}}
+    \begin{cases}
+        1 - \dfrac{1 - \gamma/\theta_k^2}{1 + \gamma/\theta_k}, & \theta_k > \sqrt{\gamma}, \\[6pt]
+        1, & \theta_k \le \sqrt{\gamma},
+    \end{cases}
+\end{equation}
+\citep{Paul2007}. This limit is stated per factor and, unlike $d(\hat{\mathbf{B}}, \mathbf{B}^{*})$, does not scale with $K$, so we compare the two on the same per-factor basis. Define the normalized subspace distance
+\begin{equation}
+    \bar{d}^2(\hat{\mathbf{B}}, \mathbf{B}^{*}) = \frac{d^2(\hat{\mathbf{B}}, \mathbf{B}^{*})}{2K} = \frac{1}{K}\sum_{k=1}^K \sin^2\theta_k \in [0,1],
+    \label{eq:average-b-distance}
+\end{equation}
+which is comparable across grid points with different $K$~\citep{Krzanowski1979} and let $\bar{d}_\infty^2$ denote the same average taken over the asymptotic values above. $\bar{d}_\infty$ is the benchmark against which we read $\bar{d}(\hat{\mathbf{B}}, \mathbf{B}^{*})$ across the simulation grid. Values close to $\bar{d}_\infty$ indicate that the MCEM estimator is close to the information limit at that $(Q, J, \sigma^{2*})$ design point, while a persistent gap indicates room for algorithmic rather than statistical improvement. This benchmark assumes independent and identical distributed noise with a common variance $\sigma^{2*}$ across groups, whereas our de convolution step in fact uses group-specific noise covariances $\mathbf{H}_j^{-1}$. We treat $\bar{d}_\infty$ as an idealized reference rather than the exact asymptotic law of our estimator; the same phase transition and eigenvector overlap formula have been shown to hold under considerably more general noise models~\citep{BenaychGeorges2011}, which supports its use here.
+
+The normalized subspace distance $\bar d^2(\hat{\mathbf B},\mathbf B^{*})=1-\frac1K\mathrm{tr}(\mathbf P_{\hat{\mathbf B}}\mathbf P_{\mathbf B^{*}})$ is a special case of a broader family of matrix correlation coefficients \citep{Ramsay1984}. The general form, the $RV$ coefficient of \citet{Escoufier1973,Robert1976}, compares two symmetric positive semidefinite matrices $\mathbf W_1,\mathbf W_2$ by
+\[
+RV(\mathbf W_1,\mathbf W_2)=\frac{\mathrm{tr}(\mathbf W_1\mathbf W_2)}{\|\mathbf W_1\|_F\,\|\mathbf W_2\|_F}\in[0,1],
+\]
+the cosine of the angle between $\mathbf W_1$ and $\mathbf W_2$ under the Frobenius inner product. Taking $\mathbf W_1=\mathbf P_{\hat{\mathbf B}}$, $\mathbf W_2=\mathbf P_{\mathbf B^{*}}$ recovers $RV=1-\bar d^2$ exactly, since $\mathrm{tr}(\mathbf P_i^2)=K$ for a rank-$K$ projector. This is the special case studied by \citet{Krzanowski1979} and, independently, by \citet{Yanai1974} under the name generalized coefficient of determination.
+
+We instead take $\mathbf W_1=\hat{\mathbf B}\hat{\mathbf B}^\top$ and $\mathbf W_2=\mathbf B^{*}(\mathbf B^{*})^\top$, the signal covariances themselves rather than their projectors:
+\begin{equation}
+    RV(\hat{\mathbf B},\mathbf B^{*}) = \frac{\mathrm{tr}\big(\hat{\mathbf B}\hat{\mathbf B}^\top\mathbf B^{*}(\mathbf B^{*})^\top\big)}{\big\|\hat{\mathbf B}\hat{\mathbf B}^\top\big\|_F\,\big\|\mathbf B^{*}(\mathbf B^{*})^\top\big\|_F}.
+    \label{eq:RV}
+\end{equation}
+Because $(\hat{\mathbf B}\mathbf Q)(\hat{\mathbf B}\mathbf Q)^\top=\hat{\mathbf B}\hat{\mathbf B}^\top$ for any $\mathbf Q\in O(K)$, this quantity is rotation-invariant without any Procrustes step, and $RV=1$ if and only if $\hat{\mathbf B}\hat{\mathbf B}^\top=c\,\mathbf B^{*}(\mathbf B^{*})^\top$ for some $c>0$. Unlike $\bar d^2$, which is computed from the projectors and so discards the relative size of the $K$ eigenvalues of $\hat{\mathbf B}\hat{\mathbf B}^\top$, $RV(\hat{\mathbf B},\mathbf B^{*})$ is sensitive to that relative weighting. A factor recovered in direction but assigned the wrong share of signal variance lowers $RV$ without changing $\bar d^2$ at all. $RV(\hat{\mathbf B},\mathbf B^{*})$ therefore sits strictly between $\bar d(\hat{\mathbf B},\mathbf B^{*})$ and $e(\hat{\bm\Sigma},\bm\Sigma^{*})$. It is finer than $\bar d$, since $\hat{\mathbf B}\hat{\mathbf B}^\top=c\,\mathbf B^{*}(\mathbf B^{*})^\top$ implies but is not implied by equal column spaces, while it remains blind to the overall scale $c$ and to $\sigma^2$, which only $e(\hat{\bm\Sigma},\bm\Sigma^{*})$ and $r(\hat\sigma^2,\sigma^{2*})$ capture.
+
+Since $\sigma^2$ is a scalar, we report the signed relative error,
+\begin{equation}
+    r(\hat\sigma^2, \sigma^{2\ast}) = \frac{\hat\sigma^2 - \sigma^{2\ast}}{\sigma^{2\ast}}.
+    \label{eq:sigma-criterion}
+\end{equation}
+A negative value indicates shrinkage toward zero, which is the direction of the Heywood-case pathology. We keep the sign rather than reporting $|r|$, since the direction of the error is itself diagnostic.
+
+\section{Simulated Data Generation}
+\label{sec:sim-data}
+
+\subsection{Generative Model}
