@@ -1,12 +1,19 @@
-- Finished the full Laplace-EM derivation for FA-DMR, including:
-  the design decision to run the E-step directly on the Q-dimensional group random effect rather than the K-dimensional factor space,
-  the latter leads to a mathematically incorrect group-collapsing approximation and a systematic inflation bias in B via Laplace shrinkage of the posterior second moment.
-
-- Main technical contribution: a Woodbury acceleration built on the Poisson-Multinomial equivalence. Introducing the auxiliary offset ξ decouples the categories in the E-step Hessian, bringing the per-Newton-step cost down from O(Q³) to O(QK²+K³),
-
-
-- Proved that using the Poisson surrogate for the Newton direction, while checking the true multinomial log-posterior in the backtracking line search, still yields exact linear convergence to the true posterior mode.
-
-- Separately characterized the systematic gap between the surrogate and true Hessians at that mode:
-  the surrogate understates posterior uncertainty exactly in the directions controlled by σ²,
-  motivated a hybrid scheme using the cheap surrogate for the search, then recompute the true curvature once at the mode.
+[sm2524@gadi-login-05 ~]$ mv results logs R/fa_dmr_wb/
+mv: target 'R/fa_dmr_wb/' is not a directory
+[sm2524@gadi-login-05 ~]$ pwd
+/home/272/sm2524
+[sm2524@gadi-login-05 ~]$ ls -la
+total 80
+drwx------   8 sm2524 vk72      4096 Sep 21 22:06 .
+drwxr-xr-x 477 root   root     36864 Sep 21 17:40 ..
+-rw-------   1 sm2524 vk72       393 Sep 16 22:04 .bash_history
+-rw-r--r--   1 sm2524 nci-i272   141 Aug 20 21:10 .bash_profile
+-rw-r--r--   1 sm2524 nci-i272  1551 Aug 20 21:10 .bashrc
+drwxr-xr-x   4 sm2524 nci-i272  4096 Aug 20 21:39 .config
+drwx------   2 sm2524 vk72      4096 Aug 20 21:49 .ssh
+drwxr-xr-x   4 sm2524 vk72      4096 Sep 21 21:54 R
+drwxr-xr-x   2 sm2524 vk72      4096 Sep 21 22:06 logs
+drwxr-xr-x   3 sm2524 nci-i272  4096 Aug 20 21:39 ondemand
+drwxr-xr-x   2 sm2524 vk72      4096 Sep 21 22:06 results
+[sm2524@gadi-login-05 ~]$ find ~ -iname "fa_dmr_wb" -type d
+[sm2524@gadi-login-05 ~]$
