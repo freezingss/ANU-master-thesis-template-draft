@@ -1,6 +1,10 @@
 source("setup.R")
 
-# Long Table
+u_frac <- function(B) {
+  Q <- nrow(B)
+  u <- rep(1 / sqrt(Q), Q)
+  sum(as.numeric(crossprod(B, u))^2) / sum(B^2)
+}
 
 build_long <- function(Y, X, group) {
   N <- nrow(Y)
@@ -20,7 +24,6 @@ build_long <- function(Y, X, group) {
 }
 
 apply_PLT <- function(B) {
-  # Add: remove the average
   B <- sweep(B, 2, colMeans(B))
   K <- ncol(B)
   qr_obj <- qr(t(B[1:K, , drop = FALSE]))
@@ -159,18 +162,6 @@ row_logsumexp <- function(eta) {
   mx + log(rowSums(exp(eta - mx)))
 }
 
-# # Classic PPCA, no deflate
-# ppca_closed <- function(S, K) {
-#   Q <- nrow(S)
-#   e <- eigen((S + t(S)) / 2, symmetric = TRUE)
-#   ev <- e$values
-#   q <- length(ev)
-#   sigma2 <- if (K < q) max(mean(ev[(K + 1):q]), 1e-8) else 1e-8
-#   B <- e$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(ev[1:K] - sigma2, 0)), K)
-#   list(B = B, sigma2 = sigma2, ev = ev, Sigma = tcrossprod(B) + sigma2 * diag(q))
-# }
-
-# Adjusted PPCA on Q-1 dimensions
 ppca_closed <- function(S, K) {
   Q <- nrow(S)
   V <- qr.Q(qr(matrix(1, Q, 1)), complete = TRUE)[, 2:Q, drop = FALSE]

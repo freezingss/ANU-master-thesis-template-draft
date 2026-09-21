@@ -1,4 +1,4 @@
-source("pfa_woodbury_only.R")
+source("std_multinomial_wb.R")
 
 fit_pfa_woodbury_lam_corr <- function(Y, X, group, K,
                                       M = rowSums(Y),

@@ -101,14 +101,14 @@ estep_dense <- function(J, group, Y, X, M, mu, phi, B, sigma2,
 mstep_phi_dense <- function(Y, X, group, lambda_hat, mu, phi, lambda_phi = 0) {
   N <- nrow(Y); Q <- ncol(Y); P <- ncol(X)
   A_obs <- t(lambda_hat[, group, drop = FALSE])
-
+  
   eta <- sweep(X %*% phi, 2, mu, "+") + A_obs
   M_i <- rowSums(Y)
   delta <- log(pmax(M_i, 1)) - row_logsumexp(eta)
-
+  
   mu_new <- mu
   phi_new <- phi
-
+  
   for (q in 1:Q) {
     off <- delta + A_obs[, q]
     co <- tryCatch({
@@ -125,6 +125,10 @@ mstep_phi_dense <- function(Y, X, group, lambda_hat, mu, phi, lambda_phi = 0) {
     if (P > 1) phi_new[2:P, q] <- co[2:P]
   }
   phi_new[1, ] <- 0
+  
+  mu_new <- mu_new - mean(mu_new)
+  if (P > 1) phi_new[2:P, ] <- sweep(phi_new[2:P, , drop = FALSE], 1, rowMeans(phi_new[2:P, , drop = FALSE]))
+  
   list(mu = mu_new, phi = phi_new)
 }
 
