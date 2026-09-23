@@ -1,41 +1,41 @@
 source("basic_functions.R")
-source("pfa_base_dense.R")
-source("pfa_woodbury_only.R")
-source("pfa_woodbury_lam_corrected.R")
-source("pfa_debias.R")
-source("pfa_fhem.R")
-source("pfa_fhem_woodbury.R")
+source("std_multinomial.R")
+source("std_multinomial_wb.R")
+source("std_multinomial_wb_lam_corrected.R")
+source("existing_packages.R")
+source("fhem.R")
+source("fhem_wb.R")
 source("sim_data.R")
 
-res_grid <- run_grid(Js = c(50, 75, 100),
-                     Qs = c(75, 100, 125, 150),
-                     seeds = 1,
-                     K = 2, Nj = 15, sigma2_true = 0.3,
-                     M_range = c(75, 150),
-                     max_iter = 80, tol = 1e-4,
-                     methods = c("wb", "corrected", "fhem", "glmmTMB"))
-saveRDS(res_grid, file = "res_grid_multiJQ.rds")
-
-res_reps <- run_grid(Js = c(200),
-                     Qs = c(400),
-                     seeds = 2:4,
-                     K = 2, 
-                     Nj = 15, 
-                     sigma2_true = 0.3,
-                     M_range = c(200, 600),
-                     max_iter = 80, 
-                     tol = 1e-4,
-                     methods = c("wb", "fhem")
-                     )
-# saveRDS(res_reps, file = "res_reps_singleJQ4.rds")
-
-plot_log_evidence(attr(res_reps, "traj_store"))
-plot_B_trajectory(attr(res_reps, "traj_store"))
-plot_sigma2_trajectory(attr(res_reps, "traj_store"), sigma2_true = 0.3)
-plot_u_frac_trajectory(attr(res_reps, "traj_store"))
-plot_runtime(res_reps)
-
-plot_runtime(res_grid)
+# res_grid <- run_grid(Js = c(50, 75, 100),
+#                      Qs = c(75, 100, 125, 150),
+#                      seeds = 1,
+#                      K = 2, Nj = 15, sigma2_true = 0.3,
+#                      M_range = c(75, 150),
+#                      max_iter = 80, tol = 1e-4,
+#                      methods = c("wb", "corrected", "fhem", "glmmTMB"))
+# saveRDS(res_grid, file = "res_grid_multiJQ.rds")
+# 
+# res_reps <- run_grid(Js = c(200),
+#                      Qs = c(400),
+#                      seeds = 2:4,
+#                      K = 2, 
+#                      Nj = 15, 
+#                      sigma2_true = 0.3,
+#                      M_range = c(200, 600),
+#                      max_iter = 80, 
+#                      tol = 1e-4,
+#                      methods = c("wb", "fhem")
+#                      )
+# # saveRDS(res_reps, file = "res_reps_singleJQ4.rds")
+# 
+# plot_log_evidence(attr(res_reps, "traj_store"))
+# plot_B_trajectory(attr(res_reps, "traj_store"))
+# plot_sigma2_trajectory(attr(res_reps, "traj_store"), sigma2_true = 0.3)
+# plot_u_frac_trajectory(attr(res_reps, "traj_store"))
+# plot_runtime(res_reps)
+# 
+# plot_runtime(res_grid)
 
 # Run grid function
 run_grid <- function(Js, Qs, seeds, K = 2, Nj = 15, sigma2_true = 0.3, P = 3,
@@ -45,7 +45,8 @@ run_grid <- function(Js, Qs, seeds, K = 2, Nj = 15, sigma2_true = 0.3, P = 3,
                      outlier_severity = NULL,
                      max_iter = 100, tol = 1e-4,
                      methods = c("wb", "corrected", "fhem", "glmmTMB"),
-                     verbose = TRUE) {
+                     verbose = TRUE,
+                     tol_B = 1e-4, tol_sigma2 = 1e-4) {
   outlier_type <- match.arg(outlier_type)
   if (is.null(N_per_group_range)) N_per_group_range <- c(Nj, Nj)
   out <- NULL
@@ -76,7 +77,23 @@ run_grid <- function(Js, Qs, seeds, K = 2, Nj = 15, sigma2_true = 0.3, P = 3,
         tt <- system.time(f <- fit_pfa_wbonly(dat$Y, dat$X, dat$group, K = K,
                                               M = dat$M, max_iter = max_iter, tol = tol, sigma2_init = sigma2_true,
                                               verbose = FALSE, estep_max_iter = 100, estep_gtol = 1e-3,
-                                              trace = TRUE, B_true = Bt))[3]
+                                              trace = TRUE, B_true = Bt, tol_B = tol_B, tol_sigma2 = tol_sigma2))[3]
+        rows[[m]] <- list(t = as.numeric(tt), B = f$B, s2 = f$sigma2,
+                          cv = f$converged, it = f$iterations, traj = f)
+      } else if (m == "wb_warm_start") {
+        tt <- system.time(f <- fit_pfa_wbonly_warm_start(dat$Y, dat$X, dat$group, K = K,
+                                                         M = dat$M, max_iter = max_iter, tol = tol,
+                                                         tol_B = tol_B, tol_sigma2 = tol_sigma2,
+                                                         rel_tol = 1e-3,
+                                                         sigma2_init = sigma2_true,
+                                                         verbose = FALSE,
+                                                         estep_max_iter = 100, 
+                                                         estep_gtol = 1e-3,
+                                                         trace = TRUE, 
+                                                         B_true = Bt,
+                                                         patience = 15, burn_in = 15, rate_window = 10,
+                                                         stall_patience = 5,
+                                                         also_require_mu_phi = FALSE))[3]
         rows[[m]] <- list(t = as.numeric(tt), B = f$B, s2 = f$sigma2,
                           cv = f$converged, it = f$iterations, traj = f)
       } else if (m == "corrected") {
