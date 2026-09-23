@@ -1,5 +1,5 @@
 source("basic_functions.R")
-source("pfa_woodbury_only.R")
+source("std_multinomial_wb.R")
 
 fhem_loglik <- function(Sigma, lt, Fl_inv) {
   total <- 0

@@ -1,14 +1,14 @@
 #!/bin/bash
 #PBS -P vk72
 #PBS -q normal
-#PBS -l ncpus=48
-#PBS -l mem=192GB
+#PBS -l ncpus=4
+#PBS -l mem=16GB
 #PBS -l walltime=08:00:00
 #PBS -l wd
 #PBS -l storage=scratch/vk72+gdata/vk72
 
 module load nci-parallel/1.0.0a
-module load R/4.3.1
+module load R/4.5.0
 
 export ncores_per_task=1
 export ncores_per_numanode=12
