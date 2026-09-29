@@ -1,4 +1,3 @@
-# Single grid for different seeds
 run_single_fit <- function(J, Q, seed, method, K,
                            P = 3, N_per_group_range = c(10, 20),
                            M_range = c(200, 500), sigma2_true = 0.3) {

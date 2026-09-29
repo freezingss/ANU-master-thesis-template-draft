@@ -162,6 +162,13 @@ row_logsumexp <- function(eta) {
   mx + log(rowSums(exp(eta - mx)))
 }
 
+fit_oracle <- function(lambda_true, K) {
+  J <- ncol(lambda_true)
+  S_oracle <- tcrossprod(lambda_true) / J
+  rt <- ppca_closed(S_oracle, K)
+  list(B = apply_PLT(rt$B), sigma2 = rt$sigma2, ok = TRUE, converged = TRUE, error = NA_character_)
+}
+
 ppca_closed <- function(S, K) {
   Q <- nrow(S)
   V <- qr.Q(qr(matrix(1, Q, 1)), complete = TRUE)[, 2:Q, drop = FALSE]

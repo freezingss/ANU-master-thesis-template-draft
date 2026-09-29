@@ -6,13 +6,10 @@ run_single_fit <- function(J, Q, K, seed, method,
                            P = P, sigma2 = sigma2_true, M_range = M_range, seed = seed)
   
   fit <- switch(method,
-                oracle = fit_oracle(dat$true$lambda, K),
-                wb = fit_pfa_wbonly(dat$Y, dat$X, dat$group, K, M = dat$M,
+                wb = fit_pfa_wbonly_warm_start(dat$Y, dat$X, dat$group, K, M = dat$M,
                                                B_true = dat$true$B, sigma2_true = dat$true$sigma2,
                                                trace = trace, ...),
-                gllvm_obs = fit_gllvm_ref(dat$Y, dat$X, dat$group, K),
-                coap_group = fit_coap_ref(dat$Y, dat$X, dat$group, K, level = "group"),
-                coap_obs = fit_coap_ref(dat$Y, dat$X, dat$group, K, level = "obs"),
+                glmmTMB = fit_glmmTMB_ref(dat$Y, dat$X, dat$group, K),
                 stop(sprintf("method '%s' is not yet wired into run_single_fit", method)))
   
   list(config = list(J = J, Q = Q, K = K, seed = seed, method = method,
